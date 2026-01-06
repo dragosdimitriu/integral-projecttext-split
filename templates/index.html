@@ -707,16 +707,16 @@
                     // Create preview table
                     if (data.data && data.data.length > 0) {
                         let tableHTML = '<div class="preview-table-container"><table class="preview-table"><thead><tr>';
-                        // Header row
-                        for (let i = 0; i < data.total_columns; i++) {
+                        // Header row - use preview_columns, not total_columns
+                        for (let i = 0; i < data.preview_columns; i++) {
                             tableHTML += `<th>${getColumnLetter(i)}</th>`;
                         }
                         tableHTML += '</tr></thead><tbody>';
                         
-                        // Data rows - show all rows
+                        // Data rows - show preview rows
                         data.data.forEach((row, rowIdx) => {
                             tableHTML += '<tr>';
-                            for (let i = 0; i < data.total_columns; i++) {
+                            for (let i = 0; i < data.preview_columns; i++) {
                                 const cellValue = row[i] || '';
                                 tableHTML += `<td title="${cellValue}">${cellValue}</td>`;
                             }
