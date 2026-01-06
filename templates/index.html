@@ -718,13 +718,20 @@
             }
 
             // Double check - never show pagination for output files
-            if (previewDataStore.isOutputFile) {
+            if (previewDataStore.isOutputFile || 
+                pagination.getAttribute('data-output-file') === 'true' ||
+                previewDataStore.folder === 'outputs') {
+                console.log('renderPagination: BLOCKED - isOutputFile detected');
                 pagination.style.display = 'none';
+                pagination.style.visibility = 'hidden';
                 pagination.innerHTML = '';
+                pagination.setAttribute('data-output-file', 'true');
                 return;
             }
             
+            console.log('renderPagination: ALLOWED - showing pagination');
             pagination.style.display = 'flex';
+            pagination.style.visibility = 'visible';
             let paginationHTML = '';
             
             // Previous button
@@ -814,8 +821,14 @@
                 if (data.success) {
                     previewDataStore.currentPage = data.current_page || 1;
                     previewDataStore.totalRows = data.total_rows || 0;
+                    
+                    // Set isOutputFile from backend or folder check
+                    previewDataStore.isOutputFile = data.is_output_file !== undefined ? data.is_output_file : (previewDataStore.folder === 'outputs');
+                    
                     // Calculate totalPages from total_rows if not provided correctly
-                    if (data.total_pages && data.total_pages > 0) {
+                    if (previewDataStore.isOutputFile) {
+                        previewDataStore.totalPages = 1;
+                    } else if (data.total_pages && data.total_pages > 0) {
                         previewDataStore.totalPages = data.total_pages;
                     } else {
                         previewDataStore.totalPages = Math.ceil(previewDataStore.totalRows / (data.rows_per_page || 50));
@@ -823,15 +836,22 @@
                     
                     renderPreviewTable(data.data, data.start_row);
                     
-                    // Only render pagination for input files
-                    if (!previewDataStore.isOutputFile) {
-                        renderPagination();
-                    } else {
-                        // Hide pagination for output files
-                        const pagination = document.getElementById('previewPagination');
+                    // CRITICAL: Only render pagination for input files
+                    const pagination = document.getElementById('previewPagination');
+                    if (previewDataStore.isOutputFile) {
+                        console.log('loadPreviewPage: HIDING PAGINATION FOR OUTPUT FILE');
                         if (pagination) {
                             pagination.style.display = 'none';
+                            pagination.style.visibility = 'hidden';
                             pagination.innerHTML = '';
+                            pagination.setAttribute('data-output-file', 'true');
+                        }
+                    } else {
+                        console.log('loadPreviewPage: RENDERING PAGINATION FOR INPUT FILE');
+                        if (pagination) {
+                            pagination.removeAttribute('data-output-file');
+                            pagination.style.visibility = 'visible';
+                            renderPagination();
                         }
                     }
                     
