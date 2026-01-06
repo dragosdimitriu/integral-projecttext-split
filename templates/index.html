@@ -1100,6 +1100,38 @@
                     
                     updatePreviewInfo(data);
                     
+                    // Add MutationObserver to prevent pagination from being shown for output files
+                    if (previewDataStore.isOutputFile) {
+                        // Disconnect any existing observer
+                        if (window.paginationObserver) {
+                            window.paginationObserver.disconnect();
+                        }
+                        
+                        const paginationObserver = new MutationObserver(function(mutations) {
+                            mutations.forEach(function(mutation) {
+                                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                                    const target = mutation.target;
+                                    if (target.id === 'previewPagination' && 
+                                        (target.style.display === 'flex' || target.style.display === 'block')) {
+                                        console.log('MutationObserver: Detected pagination display change, forcing hide');
+                                        target.style.display = 'none';
+                                        target.style.visibility = 'hidden';
+                                        target.innerHTML = '';
+                                    }
+                                }
+                            });
+                        });
+                        
+                        paginationObserver.observe(pagination, {
+                            attributes: true,
+                            attributeFilter: ['style', 'class']
+                        });
+                        
+                        // Store observer to disconnect later
+                        window.paginationObserver = paginationObserver;
+                        console.log('MutationObserver installed for output file');
+                    }
+                    
                     // For input files, load all data for search in background (in chunks to avoid memory issues)
                     if (previewDataStore.isInputFile && data.total_rows <= 2000) {
                         // Load all data for files up to 2000 rows (don't await - load in background)
