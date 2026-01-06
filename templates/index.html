@@ -794,9 +794,14 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    previewDataStore.currentPage = data.current_page;
-                    previewDataStore.totalPages = data.total_pages;
-                    previewDataStore.totalRows = data.total_rows;
+                    previewDataStore.currentPage = data.current_page || 1;
+                    previewDataStore.totalRows = data.total_rows || 0;
+                    // Calculate totalPages from total_rows if not provided correctly
+                    if (data.total_pages && data.total_pages > 0) {
+                        previewDataStore.totalPages = data.total_pages;
+                    } else {
+                        previewDataStore.totalPages = Math.ceil(previewDataStore.totalRows / (data.rows_per_page || 50));
+                    }
                     
                     renderPreviewTable(data.data, data.start_row);
                     renderPagination();
@@ -958,14 +963,22 @@
                     previewDataStore.previewColumns = data.preview_columns;
                     previewDataStore.has_more_columns = data.has_more_columns || false;
                     previewDataStore.currentPage = data.current_page || 1;
-                    previewDataStore.totalPages = data.total_pages || 1;
+                    // Calculate totalPages from total_rows if not provided, or use provided value
+                    if (data.total_pages && data.total_pages > 0) {
+                        previewDataStore.totalPages = data.total_pages;
+                    } else {
+                        // Calculate it ourselves from total_rows
+                        previewDataStore.totalPages = Math.ceil(data.total_rows / (data.rows_per_page || 50));
+                    }
                     
                     // Debug logging
                     console.log('Preview data loaded:', {
                         totalRows: previewDataStore.totalRows,
                         totalPages: previewDataStore.totalPages,
                         currentPage: previewDataStore.currentPage,
-                        rowsPerPage: previewDataStore.rowsPerPage
+                        rowsPerPage: previewDataStore.rowsPerPage,
+                        backendTotalPages: data.total_pages,
+                        backendRowsPerPage: data.rows_per_page
                     });
                     
                     renderPreviewTable(data.data, data.start_row);

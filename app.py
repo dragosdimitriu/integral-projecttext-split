@@ -1004,6 +1004,9 @@ def preview_file(folder, filename):
         
         wb.close()
         
+        # Debug: Print pagination info
+        print(f"DEBUG Preview: total_rows={total_rows}, rows_per_page={rows_per_page}, total_pages={total_pages}, page={page}, start_row={start_row}, end_row={end_row}, data_rows={len(preview_data)}")
+        
         return jsonify({
             'success': True,
             'filename': filename,
