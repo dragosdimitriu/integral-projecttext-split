@@ -810,7 +810,19 @@
                     }
                     
                     renderPreviewTable(data.data, data.start_row);
-                    renderPagination();
+                    
+                    // Only render pagination for input files
+                    if (!previewDataStore.isOutputFile) {
+                        renderPagination();
+                    } else {
+                        // Hide pagination for output files
+                        const pagination = document.getElementById('previewPagination');
+                        if (pagination) {
+                            pagination.style.display = 'none';
+                            pagination.innerHTML = '';
+                        }
+                    }
+                    
                     updatePreviewInfo(data);
                 } else {
                     throw new Error(data.error || 'Eșec la încărcarea previzualizării');
@@ -992,8 +1004,9 @@
                     // For input files, calculate totalPages from total_rows if not provided
                     if (previewDataStore.isOutputFile) {
                         previewDataStore.totalPages = 1;
-                        // Hide pagination immediately for output files
+                        // Hide pagination immediately and don't render it for output files
                         pagination.style.display = 'none';
+                        pagination.innerHTML = ''; // Clear any existing pagination HTML
                     } else if (data.total_pages && data.total_pages > 0) {
                         previewDataStore.totalPages = data.total_pages;
                     } else {
@@ -1015,7 +1028,16 @@
                     });
                     
                     renderPreviewTable(data.data, data.start_row);
-                    renderPagination(); // This will respect isOutputFile and hide if needed
+                    
+                    // Only render pagination for input files
+                    if (!previewDataStore.isOutputFile) {
+                        renderPagination();
+                    } else {
+                        // Double-check: hide pagination for output files
+                        pagination.style.display = 'none';
+                        pagination.innerHTML = '';
+                    }
+                    
                     updatePreviewInfo(data);
                     
                     // For input files, load all data for search in background (in chunks to avoid memory issues)
