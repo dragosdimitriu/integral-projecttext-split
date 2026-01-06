@@ -60,6 +60,12 @@ if [ ! -f "$APP_DIR/.env" ]; then
     echo "⚠️  WARNING: .env file not found!"
     echo "Please create .env file with required environment variables."
     echo "See config.example.env for reference."
+else
+    # Secure .env file permissions (only owner can read/write)
+    echo ""
+    echo "Securing .env file permissions..."
+    chmod 600 $APP_DIR/.env
+    echo "✓ .env file permissions set to 600 (owner read/write only)"
 fi
 
 # Restart the service
