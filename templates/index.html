@@ -946,7 +946,13 @@
             title.textContent = 'Se încarcă previzualizarea...';
             info.innerHTML = '';
             table.innerHTML = '<div class="loading">Se încarcă previzualizarea fișierului...</div>';
+            // Hide pagination initially, will be shown if needed for input files
             pagination.style.display = 'none';
+            
+            // For output files, hide pagination immediately
+            if (previewDataStore.isOutputFile) {
+                pagination.style.display = 'none';
+            }
             
             try {
                 // Load first page
