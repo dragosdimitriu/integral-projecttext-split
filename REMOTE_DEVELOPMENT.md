@@ -9,8 +9,11 @@ This guide explains how to connect to the production server for remote developme
 1. **Install VS Code Remote - SSH Extension**:
    - Open VS Code
    - Press `Ctrl+Shift+X` to open Extensions
-   - Search for "Remote - SSH"
-   - Install the extension by Microsoft
+   - Search for: `ms-vscode-remote.remote-ssh` (extension ID)
+   - Or search for: "Remote - SSH" and look for publisher: **Microsoft**
+   - Extension ID: `ms-vscode-remote.remote-ssh`
+   - Publisher: **Microsoft**
+   - Install the extension
 
 2. **SSH Config File**:
    The SSH config has been automatically created at:
