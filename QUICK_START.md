@@ -40,6 +40,39 @@ sudo certbot --nginx -d pt.schrack.lastchance.ro
 ### 6. Test
 Visit: https://pt.schrack.lastchance.ro
 
+## 🔄 Updating Production to Main Branch
+
+After merging to main, update production:
+
+```bash
+# SSH to production server
+ssh -p 2324 lastchance@185.125.109.150
+
+# Navigate to app directory
+cd /home/lastchance/ProjectTextApp
+
+# Switch to main branch and pull latest changes
+git checkout main
+git pull origin main
+
+# Update dependencies (if requirements changed)
+source venv/bin/activate
+pip install -r requirements-prod.txt
+
+# Restart the service
+sudo systemctl restart integral-projecttext
+
+# Check status
+sudo systemctl status integral-projecttext
+```
+
+Or use the automated script:
+```bash
+cd /home/lastchance/ProjectTextApp
+chmod +x deploy_main_to_production.sh
+sudo ./deploy_main_to_production.sh
+```
+
 ## 📋 Server Details
 - **IP**: 185.125.109.150
 - **Domain**: pt.schrack.lastchance.ro
