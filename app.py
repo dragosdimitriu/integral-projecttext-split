@@ -578,22 +578,126 @@ def send_processing_complete_email(user_email, user_name, input_filename, output
         download_url = f"{base_url}/download/outputs/{output_filename}"
         print(f"EMAIL DEBUG: Download URL = {download_url}")
         
-        subject = f"File Processing Complete: {input_filename}"
-        body = f"""Hello {user_name},
+        subject = f"Procesare Completă: {input_filename}"
+        
+        # Create beautiful HTML email optimized for Gmail
+        html_body = f"""
+        <!DOCTYPE html>
+        <html lang="ro">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f7fa;">
+            <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f5f7fa; padding: 40px 20px;">
+                <tr>
+                    <td align="center">
+                        <table role="presentation" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                            <!-- Header -->
+                            <tr>
+                                <td style="background: linear-gradient(135deg, #4A478A 0%, #3A356A 100%); padding: 40px 30px; text-align: center;">
+                                    <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">Integral ProjectText FileProcessor</h1>
+                                    <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Procesare Completă cu Succes</p>
+                                </td>
+                            </tr>
+                            
+                            <!-- Content -->
+                            <tr>
+                                <td style="padding: 40px 30px;">
+                                    <p style="margin: 0 0 20px 0; color: #1e293b; font-size: 16px; line-height: 1.6;">
+                                        Salut <strong>{user_name}</strong>,
+                                    </p>
+                                    
+                                    <p style="margin: 0 0 30px 0; color: #64748b; font-size: 15px; line-height: 1.6;">
+                                        Fișierul tău a fost procesat cu succes! Iată detaliile:
+                                    </p>
+                                    
+                                    <!-- File Details Card -->
+                                    <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f8fafc; border-radius: 8px; margin-bottom: 30px; overflow: hidden;">
+                                        <tr>
+                                            <td style="padding: 20px;">
+                                                <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                                                    <tr>
+                                                        <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+                                                            <span style="color: #64748b; font-size: 14px; font-weight: 500;">Fișier Intrare:</span>
+                                                            <span style="color: #1e293b; font-size: 14px; margin-left: 8px;">{input_filename}</span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+                                                            <span style="color: #64748b; font-size: 14px; font-weight: 500;">Fișier Ieșire:</span>
+                                                            <span style="color: #1e293b; font-size: 14px; margin-left: 8px;">{output_filename}</span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="padding: 8px 0;">
+                                                            <span style="color: #64748b; font-size: 14px; font-weight: 500;">Timp Procesare:</span>
+                                                            <span style="color: #1e293b; font-size: 14px; margin-left: 8px;">{processing_time} secunde</span>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    
+                                    <!-- Download Button -->
+                                    <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                                        <tr>
+                                            <td align="center">
+                                                <a href="{download_url}" style="display: inline-block; background: linear-gradient(135deg, #4A478A 0%, #3A356A 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(74, 71, 138, 0.3);">
+                                                    📥 Descarcă Fișierul Procesat
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    
+                                    <p style="margin: 0 0 10px 0; color: #64748b; font-size: 13px; line-height: 1.5; text-align: center;">
+                                        Linkul va rămâne valabil timp de 7 zile.
+                                    </p>
+                                    
+                                    <p style="margin: 20px 0 0 0; color: #64748b; font-size: 13px; line-height: 1.5; text-align: center;">
+                                        Dacă butonul nu funcționează, copiază și lipește acest link în browser:<br>
+                                        <a href="{download_url}" style="color: #4A478A; word-break: break-all;">{download_url}</a>
+                                    </p>
+                                </td>
+                            </tr>
+                            
+                            <!-- Footer -->
+                            <tr>
+                                <td style="background-color: #f8fafc; padding: 20px 30px; text-align: center; border-top: 1px solid #e2e8f0;">
+                                    <p style="margin: 0; color: #64748b; font-size: 12px; line-height: 1.5;">
+                                        Cu respect,<br>
+                                        <strong style="color: #4A478A;">Echipa Integral ProjectText FileProcessor</strong>
+                                    </p>
+                                    <p style="margin: 12px 0 0 0; color: #94a3b8; font-size: 11px;">
+                                        Acest email a fost generat automat. Vă rugăm să nu răspundeți.
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>
+        """
+        
+        # Plain text fallback
+        text_body = f"""Salut {user_name},
 
-Your file has been processed successfully!
+Fișierul tău a fost procesat cu succes!
 
-Input File: {input_filename}
-Output File: {output_filename}
-Processing Time: {processing_time} seconds
+Fișier Intrare: {input_filename}
+Fișier Ieșire: {output_filename}
+Timp Procesare: {processing_time} secunde
 
-Download your processed file:
+Descarcă fișierul procesat:
 {download_url}
 
-This link will remain valid for 7 days.
+Linkul va rămâne valabil timp de 7 zile.
 
-Best regards,
-Integral ProjectText FileProcessor"""
+Cu respect,
+Echipa Integral ProjectText FileProcessor"""
         
         # Determine sender - use MAIL_DEFAULT_SENDER or fallback to MAIL_USERNAME
         sender = app.config['MAIL_DEFAULT_SENDER']
@@ -611,12 +715,13 @@ Integral ProjectText FileProcessor"""
         
         print(f"EMAIL DEBUG: Recipient: {user_email}")
         print(f"EMAIL DEBUG: Subject: {subject}")
-        print(f"EMAIL DEBUG: Body length: {len(body)} characters")
+        print(f"EMAIL DEBUG: HTML body length: {len(html_body)} characters")
         
         msg = Message(
             subject=subject,
             recipients=[user_email],
-            body=body,
+            html=html_body,
+            body=text_body,
             sender=sender
         )
         
