@@ -642,6 +642,26 @@
             
             try {
                 const response = await fetch(`/preview/${folder}/${filename}`);
+                
+                // Check if response is OK and is JSON
+                if (!response.ok) {
+                    // Try to get error message from response
+                    let errorText = await response.text();
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        throw new Error(errorData.error || 'Eroare necunoscută');
+                    } catch (parseError) {
+                        // Response is not JSON, might be HTML error page
+                        throw new Error(`Eroare server: ${response.status} ${response.statusText}`);
+                    }
+                }
+                
+                // Check content type to ensure it's JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Serverul a returnat un răspuns neașteptat. Fișierul poate fi prea mare.');
+                }
+                
                 const data = await response.json();
                 
                 if (data.success) {
