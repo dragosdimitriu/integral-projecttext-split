@@ -695,7 +695,13 @@
         // Render pagination controls
         function renderPagination() {
             const pagination = document.getElementById('previewPagination');
-            if (previewDataStore.totalPages <= 1) {
+            if (!pagination) {
+                console.error('Pagination element not found');
+                return;
+            }
+            
+            // Always show pagination if there are more than 50 rows, even if totalPages is 1
+            if (previewDataStore.totalPages <= 1 && previewDataStore.totalRows <= 50) {
                 pagination.style.display = 'none';
                 return;
             }
@@ -950,9 +956,17 @@
                     previewDataStore.totalRows = data.total_rows;
                     previewDataStore.totalColumns = data.total_columns;
                     previewDataStore.previewColumns = data.preview_columns;
-                    previewDataStore.has_more_columns = data.has_more_columns;
-                    previewDataStore.currentPage = data.current_page;
-                    previewDataStore.totalPages = data.total_pages;
+                    previewDataStore.has_more_columns = data.has_more_columns || false;
+                    previewDataStore.currentPage = data.current_page || 1;
+                    previewDataStore.totalPages = data.total_pages || 1;
+                    
+                    // Debug logging
+                    console.log('Preview data loaded:', {
+                        totalRows: previewDataStore.totalRows,
+                        totalPages: previewDataStore.totalPages,
+                        currentPage: previewDataStore.currentPage,
+                        rowsPerPage: previewDataStore.rowsPerPage
+                    });
                     
                     // For input files, load all data for search (in chunks to avoid memory issues)
                     if (previewDataStore.isInputFile && data.total_rows <= 2000) {

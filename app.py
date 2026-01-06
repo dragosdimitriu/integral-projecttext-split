@@ -967,6 +967,8 @@ def preview_file(folder, filename):
         
         # Calculate pagination
         total_pages = (total_rows + rows_per_page - 1) // rows_per_page  # Ceiling division
+        if total_pages == 0:
+            total_pages = 1  # At least 1 page even if no rows
         page = max(1, min(page, total_pages))  # Clamp page between 1 and total_pages
         
         # Calculate row range for this page
