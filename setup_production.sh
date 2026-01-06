@@ -14,23 +14,23 @@ apt update && apt upgrade -y
 echo "Installing required packages..."
 apt install -y python3 python3-pip python3-venv git nginx supervisor certbot python3-certbot-nginx ufw
 
-# Create application user
-echo "Creating application user..."
-if ! id -u appuser > /dev/null 2>&1; then
-    adduser --disabled-password --gecos "" appuser
-    usermod -aG sudo appuser
+# Ensure lastchance user exists (should already exist)
+echo "Checking lastchance user..."
+if ! id -u lastchance > /dev/null 2>&1; then
+    echo "ERROR: lastchance user does not exist. Please create it first."
+    exit 1
 fi
 
 # Set up firewall
 echo "Configuring firewall..."
 ufw --force enable
-ufw allow OpenSSH
+ufw allow 2324/tcp  # SSH on custom port
 ufw allow 'Nginx Full'
 
-# Switch to appuser for application setup
+# Switch to lastchance user for application setup
 echo "Setting up application..."
-su - appuser << 'EOF'
-cd /home/appuser
+su - lastchance << 'EOF'
+cd /home/lastchance
 
 # Clone repository
 if [ ! -d "app" ]; then
@@ -71,7 +71,7 @@ EOF
 
 # Create Gunicorn config
 echo "Creating Gunicorn configuration..."
-cat > /home/appuser/app/gunicorn_config.py << 'GUNICORNEOF'
+cat > /home/lastchance/app/gunicorn_config.py << 'GUNICORNEOF'
 bind = "127.0.0.1:5000"
 workers = 4
 worker_class = "sync"
@@ -83,7 +83,7 @@ max_requests_jitter = 100
 preload_app = True
 GUNICORNEOF
 
-chown appuser:appuser /home/appuser/app/gunicorn_config.py
+chown lastchance:lastchance /home/lastchance/app/gunicorn_config.py
 
 # Create systemd service
 echo "Creating systemd service..."
@@ -93,12 +93,12 @@ Description=Integral ProjectText FileProcessor Gunicorn daemon
 After=network.target
 
 [Service]
-User=appuser
-Group=appuser
-WorkingDirectory=/home/appuser/app
-Environment="PATH=/home/appuser/app/venv/bin"
-EnvironmentFile=/home/appuser/app/.env
-ExecStart=/home/appuser/app/venv/bin/gunicorn --config /home/appuser/app/gunicorn_config.py wsgi:app
+User=lastchance
+Group=lastchance
+WorkingDirectory=/home/lastchance/app
+Environment="PATH=/home/lastchance/app/venv/bin"
+EnvironmentFile=/home/lastchance/app/.env
+ExecStart=/home/lastchance/app/venv/bin/gunicorn --config /home/lastchance/app/gunicorn_config.py wsgi:app
 Restart=always
 RestartSec=10
 
@@ -125,7 +125,7 @@ server {
     }
 
     location /static {
-        alias /home/appuser/app/static;
+        alias /home/lastchance/app/static;
         expires 30d;
         add_header Cache-Control "public, immutable";
     }
@@ -137,7 +137,7 @@ ln -sf /etc/nginx/sites-available/integral-projecttext /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 
 # Set permissions
-chown -R appuser:appuser /home/appuser/app
+chown -R lastchance:lastchance /home/lastchance/app
 
 # Reload systemd and start services
 echo "Starting services..."
@@ -150,7 +150,7 @@ echo ""
 echo "=== Setup Complete ==="
 echo ""
 echo "Next steps:"
-echo "1. Edit /home/appuser/app/.env and add your Google OAuth credentials"
+echo "1. Edit /home/lastchance/app/.env and add your Google OAuth credentials"
 echo "2. Restart the service: sudo systemctl restart integral-projecttext"
 echo "3. Set up SSL: sudo certbot --nginx -d pt.schrack.lastchance.ro"
 echo "4. Update Google OAuth redirect URI to: https://pt.schrack.lastchance.ro/callback"

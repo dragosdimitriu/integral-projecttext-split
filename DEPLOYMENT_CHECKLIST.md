@@ -12,9 +12,9 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINa/bf8BpIEih+QHTRjlgxonGhnCGg2i4KnxJzdtkG2a
 ## Step 2: Connect to Server
 
 ```bash
-ssh root@185.125.109.150
+ssh -p 2324 lastchance@185.125.109.150
 # or
-ssh root@pt.schrack.lastchance.ro
+ssh -p 2324 lastchance@pt.schrack.lastchance.ro
 ```
 
 ## Step 3: Add SSH Key to Server
@@ -31,11 +31,12 @@ chmod 600 ~/.ssh/authorized_keys
 
 Option A - Automated (recommended):
 ```bash
-# Upload setup script to server
-scp setup_production.sh root@185.125.109.150:/root/
-ssh root@185.125.109.150
-chmod +x setup_production.sh
-./setup_production.sh
+# Upload setup script to server (you may need sudo access)
+scp -P 2324 setup_production.sh lastchance@185.125.109.150:/home/lastchance/
+ssh -p 2324 lastchance@185.125.109.150
+# If you have sudo access, run:
+sudo chmod +x setup_production.sh
+sudo ./setup_production.sh
 ```
 
 Option B - Manual (follow PRODUCTION_SETUP.md):
@@ -46,8 +47,7 @@ Option B - Manual (follow PRODUCTION_SETUP.md):
 ## Step 5: Configure Environment Variables
 
 ```bash
-su - appuser
-cd /home/appuser/app
+cd /home/lastchance/app
 nano .env
 ```
 
@@ -92,7 +92,7 @@ Visit: https://pt.schrack.lastchance.ro
 Once everything works:
 
 ```bash
-cd /home/appuser/app
+cd /home/lastchance/app
 git checkout main
 git merge authentication
 git push origin main

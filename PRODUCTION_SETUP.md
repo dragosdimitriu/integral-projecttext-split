@@ -22,9 +22,9 @@ chmod 600 ~/.ssh/authorized_keys
 
 ### Connect to server:
 ```bash
-ssh root@185.125.109.150
+ssh -p 2324 lastchance@185.125.109.150
 # or
-ssh root@pt.schrack.lastchance.ro
+ssh -p 2324 lastchance@pt.schrack.lastchance.ro
 ```
 
 ### Update system:
@@ -37,29 +37,18 @@ apt update && apt upgrade -y
 apt install -y python3 python3-pip python3-venv git nginx supervisor certbot python3-certbot-nginx ufw
 ```
 
-### Create application user:
-```bash
-adduser --disabled-password --gecos "" appuser
-usermod -aG sudo appuser
-```
-
 ### Set up firewall:
 ```bash
-ufw allow OpenSSH
-ufw allow 'Nginx Full'
-ufw enable
+sudo ufw allow 2324/tcp  # SSH on custom port
+sudo ufw allow 'Nginx Full'
+sudo ufw enable
 ```
 
 ## Step 3: Application Setup (Run on Server)
 
-### Switch to appuser:
-```bash
-su - appuser
-```
-
 ### Clone repository:
 ```bash
-cd /home/appuser
+cd /home/lastchance
 git clone https://github.com/dragosdimitriu/integral-projecttext-split.git app
 cd app
 git checkout authentication
@@ -102,7 +91,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 ### Create Gunicorn config:
 ```bash
-nano /home/appuser/app/gunicorn_config.py
+nano /home/lastchance/app/gunicorn_config.py
 ```
 
 Add:
@@ -132,12 +121,12 @@ Description=Integral ProjectText FileProcessor Gunicorn daemon
 After=network.target
 
 [Service]
-User=appuser
-Group=appuser
-WorkingDirectory=/home/appuser/app
-Environment="PATH=/home/appuser/app/venv/bin"
-EnvironmentFile=/home/appuser/app/.env
-ExecStart=/home/appuser/app/venv/bin/gunicorn --config /home/appuser/app/gunicorn_config.py wsgi:app
+User=lastchance
+Group=lastchance
+WorkingDirectory=/home/lastchance/app
+Environment="PATH=/home/lastchance/app/venv/bin"
+EnvironmentFile=/home/lastchance/app/.env
+ExecStart=/home/lastchance/app/venv/bin/gunicorn --config /home/lastchance/app/gunicorn_config.py wsgi:app
 Restart=always
 RestartSec=10
 
@@ -178,7 +167,7 @@ server {
     }
 
     location /static {
-        alias /home/appuser/app/static;
+        alias /home/lastchance/app/static;
         expires 30d;
         add_header Cache-Control "public, immutable";
     }
@@ -243,7 +232,7 @@ sudo journalctl -u integral-projecttext -n 50
 
 ### Permission issues:
 ```bash
-sudo chown -R appuser:appuser /home/appuser/app
+sudo chown -R lastchance:lastchance /home/lastchance/app
 ```
 
 ### Port already in use:
