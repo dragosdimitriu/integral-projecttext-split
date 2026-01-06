@@ -979,12 +979,15 @@
                     previewDataStore.previewColumns = data.preview_columns;
                     previewDataStore.has_more_columns = data.has_more_columns || false;
                     previewDataStore.currentPage = data.current_page || 1;
-                    previewDataStore.isOutputFile = data.is_output_file || false;
+                    // Set isOutputFile from backend response or use folder check as fallback
+                    previewDataStore.isOutputFile = data.is_output_file !== undefined ? data.is_output_file : (folder === 'outputs');
                     
                     // For output files, always 1 page (only first 50 rows shown)
                     // For input files, calculate totalPages from total_rows if not provided
                     if (previewDataStore.isOutputFile) {
                         previewDataStore.totalPages = 1;
+                        // Hide pagination immediately for output files
+                        pagination.style.display = 'none';
                     } else if (data.total_pages && data.total_pages > 0) {
                         previewDataStore.totalPages = data.total_pages;
                     } else {
@@ -994,16 +997,19 @@
                     
                     // Debug logging
                     console.log('Preview data loaded:', {
+                        folder: folder,
+                        isOutputFile: previewDataStore.isOutputFile,
                         totalRows: previewDataStore.totalRows,
                         totalPages: previewDataStore.totalPages,
                         currentPage: previewDataStore.currentPage,
                         rowsPerPage: previewDataStore.rowsPerPage,
                         backendTotalPages: data.total_pages,
-                        backendRowsPerPage: data.rows_per_page
+                        backendRowsPerPage: data.rows_per_page,
+                        backendIsOutputFile: data.is_output_file
                     });
                     
                     renderPreviewTable(data.data, data.start_row);
-                    renderPagination();
+                    renderPagination(); // This will respect isOutputFile and hide if needed
                     updatePreviewInfo(data);
                     
                     // For input files, load all data for search in background (in chunks to avoid memory issues)
