@@ -17,17 +17,19 @@ if [ -f "/etc/nginx/sites-available/integral-projecttext.backup" ]; then
     fi
 fi
 
-# Create a simple working configuration
+# Create a simple working configuration (HTTP only - for emergency)
 echo ""
-echo "Creating simple working configuration..."
+echo "Creating simple working configuration (HTTP only)..."
+echo "NOTE: This is HTTP only. Run setup_https.sh after fixing to enable HTTPS."
 sudo tee /etc/nginx/sites-available/integral-projecttext > /dev/null << 'NGINXEOF'
 server {
     listen 80;
+    listen [::]:80;
     server_name pt.schrack.lastchance.ro 185.125.109.150;
 
     client_max_body_size 16M;
 
-    # Serve static files - Flask uses /static without trailing slash
+    # Flask serves static files from /static (no trailing slash)
     location /static {
         alias /home/lastchance/ProjectTextApp/static;
         expires 30d;
@@ -41,6 +43,8 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
     }
 }
 NGINXEOF

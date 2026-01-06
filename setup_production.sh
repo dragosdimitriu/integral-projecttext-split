@@ -115,14 +115,23 @@ RestartSec=10
 WantedBy=multi-user.target
 SERVICEEOF
 
-# Create Nginx config
-echo "Creating Nginx configuration..."
+# Create Nginx config (HTTP only - HTTPS will be set up separately)
+echo "Creating Nginx configuration (HTTP only)..."
+echo "After setup, run setup_https.sh to enable HTTPS"
 cat > /etc/nginx/sites-available/integral-projecttext << 'NGINXEOF'
 server {
     listen 80;
+    listen [::]:80;
     server_name pt.schrack.lastchance.ro 185.125.109.150;
 
     client_max_body_size 16M;
+
+    # Flask serves static files from /static (no trailing slash)
+    location /static {
+        alias /home/lastchance/ProjectTextApp/static;
+        expires 30d;
+        add_header Cache-Control "public";
+    }
 
     location / {
         proxy_pass http://127.0.0.1:5000;
@@ -130,14 +139,9 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
         proxy_redirect off;
-    }
-
-    location /static/ {
-        alias /home/lastchance/ProjectTextApp/static/;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-        access_log off;
     }
 }
 NGINXEOF

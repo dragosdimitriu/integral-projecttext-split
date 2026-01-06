@@ -148,7 +148,26 @@ sudo systemctl status integral-projecttext
 
 ## Step 6: Configure Nginx
 
-### Create Nginx config:
+### Option A: Automated HTTPS Setup (Recommended)
+
+Run the HTTPS setup script:
+```bash
+cd /home/lastchance/ProjectTextApp
+chmod +x setup_https.sh
+sudo ./setup_https.sh
+```
+
+This will:
+- Configure Nginx for HTTPS
+- Obtain SSL certificate from Let's Encrypt
+- Set up HTTP to HTTPS redirect
+- Configure security headers
+
+### Option B: Manual Setup
+
+#### Step 6a: Initial HTTP Configuration
+
+Create Nginx config:
 ```bash
 sudo nano /etc/nginx/sites-available/integral-projecttext
 ```
@@ -157,9 +176,22 @@ Add:
 ```nginx
 server {
     listen 80;
+    listen [::]:80;
     server_name pt.schrack.lastchance.ro 185.125.109.150;
 
     client_max_body_size 16M;
+
+    # Allow Let's Encrypt verification
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    # Flask serves static files from /static (no trailing slash)
+    location /static {
+        alias /home/lastchance/ProjectTextApp/static;
+        expires 30d;
+        add_header Cache-Control "public";
+    }
 
     location / {
         proxy_pass http://127.0.0.1:5000;
@@ -167,32 +199,107 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_redirect off;
-    }
-
-    location /static/ {
-        alias /home/lastchance/ProjectTextApp/static/;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-        access_log off;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
     }
 }
 ```
 
-### Enable site:
+Enable site:
 ```bash
 sudo ln -s /etc/nginx/sites-available/integral-projecttext /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
 ```
 
-## Step 7: SSL Certificate (Let's Encrypt)
+#### Step 6b: SSL Certificate (Let's Encrypt)
 
+Install Certbot (if not already installed):
 ```bash
-sudo certbot --nginx -d pt.schrack.lastchance.ro
+sudo apt-get update
+sudo apt-get install -y certbot python3-certbot-nginx
 ```
 
-Follow prompts and select option to redirect HTTP to HTTPS.
+Obtain SSL certificate:
+```bash
+sudo certbot --nginx -d pt.schrack.lastchance.ro --non-interactive --agree-tos --email admin@lastchance.ro --redirect
+```
+
+Certbot will automatically:
+- Obtain SSL certificate
+- Update Nginx configuration for HTTPS
+- Set up HTTP to HTTPS redirect
+- Configure SSL settings
+
+#### Step 6c: Verify HTTPS Configuration
+
+After Certbot, your Nginx config should look like:
+```nginx
+# HTTP server - redirect to HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name pt.schrack.lastchance.ro 185.125.109.150;
+    return 301 https://$server_name$request_uri;
+}
+
+# HTTPS server
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name pt.schrack.lastchance.ro 185.125.109.150;
+
+    ssl_certificate /etc/letsencrypt/live/pt.schrack.lastchance.ro/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/pt.schrack.lastchance.ro/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    client_max_body_size 16M;
+
+    location /static {
+        alias /home/lastchance/ProjectTextApp/static;
+        expires 30d;
+        add_header Cache-Control "public";
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+    }
+}
+```
+
+## Step 7: Update Environment Variables for HTTPS
+
+Update `.env` file to enable secure cookies:
+```bash
+nano /home/lastchance/ProjectTextApp/.env
+```
+
+Make sure `SESSION_COOKIE_SECURE=True`:
+```env
+SECRET_KEY=your-secret-key
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
+SESSION_COOKIE_SECURE=True
+FLASK_DEBUG=False
+```
+
+Restart the service:
+```bash
+sudo systemctl restart integral-projecttext
+```
 
 ## Step 8: Update Google OAuth Redirect URI
 
