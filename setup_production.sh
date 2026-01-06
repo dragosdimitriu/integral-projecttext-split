@@ -14,11 +14,17 @@ apt update && apt upgrade -y
 echo "Installing required packages..."
 apt install -y python3 python3-pip python3-venv git nginx supervisor certbot python3-certbot-nginx ufw
 
-# Ensure lastchance user exists (should already exist)
+# Ensure lastchance user exists and has sudo/root privileges
 echo "Checking lastchance user..."
 if ! id -u lastchance > /dev/null 2>&1; then
     echo "ERROR: lastchance user does not exist. Please create it first."
     exit 1
+fi
+
+# Ensure lastchance has sudo privileges
+if ! groups lastchance | grep -q sudo; then
+    echo "Adding lastchance to sudo group..."
+    usermod -aG sudo lastchance
 fi
 
 # Set up firewall

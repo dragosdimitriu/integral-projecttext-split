@@ -139,6 +139,7 @@ If Cursor server fails to install on remote:
 - Verify SSH key is added to server: `~/.ssh/authorized_keys`
 - Check file permissions: `chmod 600 ~/.ssh/integral_projecttext_prod`
 - Ensure user has access to `/home/lastchance/ProjectTextApp`
+- **Note**: lastchance user has root/sudo privileges, so you can fix permissions with `sudo chown` if needed
 
 ### Slow Connection
 

@@ -27,14 +27,16 @@ ssh -p 2324 lastchance@185.125.109.150
 ssh -p 2324 lastchance@pt.schrack.lastchance.ro
 ```
 
+**Note**: The `lastchance` user has root/sudo privileges, so you can run all commands directly or with `sudo`.
+
 ### Update system:
 ```bash
-apt update && apt upgrade -y
+sudo apt update && sudo apt upgrade -y
 ```
 
 ### Install required packages:
 ```bash
-apt install -y python3 python3-pip python3-venv git nginx supervisor certbot python3-certbot-nginx ufw
+sudo apt install -y python3 python3-pip python3-venv git nginx supervisor certbot python3-certbot-nginx ufw
 ```
 
 ### Set up firewall:

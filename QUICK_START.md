@@ -15,8 +15,8 @@ chmod 600 ~/.ssh/authorized_keys
 # From your local machine
 scp -P 2324 setup_production.sh lastchance@185.125.109.150:/home/lastchance/
 ssh -p 2324 lastchance@185.125.109.150
-# If you have sudo access:
-sudo chmod +x setup_production.sh
+# lastchance user has root/sudo privileges
+chmod +x setup_production.sh
 sudo ./setup_production.sh
 ```
 
