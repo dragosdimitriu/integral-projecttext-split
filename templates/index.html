@@ -9,16 +9,18 @@
 <body>
     <div class="container">
         <header>
-            <div class="logo-container">
-                <img src="{{ url_for('static', filename='images/logo.png') }}" 
-                     onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/logo.svg') }}';" 
-                     alt="SCHRACK SECONET Logo" class="logo-main">
-            </div>
             <div class="header-content">
-                <div class="icon-wrapper">
-                    <img src="{{ url_for('static', filename='images/icon.png') }}" 
-                         onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/icon.svg') }}';" 
-                         alt="Icon" class="logo-icon">
+                <div class="logos-container">
+                    <div class="icon-wrapper">
+                        <img src="{{ url_for('static', filename='images/icon.png') }}" 
+                             onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/icon.svg') }}';" 
+                             alt="Icon" class="logo-icon">
+                    </div>
+                    <div class="logo-container">
+                        <img src="{{ url_for('static', filename='images/logo.png') }}" 
+                             onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/logo.svg') }}';" 
+                             alt="SCHRACK SECONET Logo" class="logo-main">
+                    </div>
                 </div>
                 <div class="header-text">
                     <h1>Integral ProjectText FileProcessor</h1>
@@ -450,7 +452,11 @@
                 const fileData = file;
                 // Use stored values or defaults
                 const defaultColumn = file.column || '';
-                const defaultMaxChars = file.max_chars || '20';
+                // Always default to 20 if not provided or if value is invalid
+                let defaultMaxChars = file.max_chars;
+                if (!defaultMaxChars || defaultMaxChars === '' || defaultMaxChars < 18 || defaultMaxChars > 23) {
+                    defaultMaxChars = '20';
+                }
                 const suggestedBadge = file.suggested ? '<span class="suggested-badge" title="Parameters suggested by automatic analysis">✨ Suggested</span>' : '';
                 fileItem.innerHTML = `
                     <div class="file-item-top">
@@ -645,30 +651,42 @@
                             <span><strong>Foaie:</strong> ${data.sheet_name}</span>
                             <span><strong>Total Rânduri:</strong> ${data.total_rows}</span>
                             <span><strong>Total Coloane:</strong> ${data.total_columns}</span>
-                            <span><strong>Previzualizare:</strong> Primele ${data.preview_rows} rânduri, ${data.preview_columns} coloane</span>
+                            <span><strong>Previzualizare:</strong> Toate ${data.total_rows} rânduri, ${data.total_columns} coloane</span>
                         </div>
                     `;
                     
+                    // Helper function to convert column index to letter (A, B, ..., Z, AA, AB, ...)
+                    function getColumnLetter(index) {
+                        let result = '';
+                        index++; // Convert to 1-based
+                        while (index > 0) {
+                            index--;
+                            result = String.fromCharCode(65 + (index % 26)) + result;
+                            index = Math.floor(index / 26);
+                        }
+                        return result;
+                    }
+                    
                     // Create preview table
                     if (data.data && data.data.length > 0) {
-                        let tableHTML = '<table class="preview-table"><thead><tr>';
+                        let tableHTML = '<div class="preview-table-container"><table class="preview-table"><thead><tr>';
                         // Header row
-                        for (let i = 0; i < data.preview_columns; i++) {
-                            tableHTML += `<th>${String.fromCharCode(65 + i)}</th>`;
+                        for (let i = 0; i < data.total_columns; i++) {
+                            tableHTML += `<th>${getColumnLetter(i)}</th>`;
                         }
                         tableHTML += '</tr></thead><tbody>';
                         
-                        // Data rows
+                        // Data rows - show all rows
                         data.data.forEach((row, rowIdx) => {
                             tableHTML += '<tr>';
-                            for (let i = 0; i < data.preview_columns; i++) {
+                            for (let i = 0; i < data.total_columns; i++) {
                                 const cellValue = row[i] || '';
                                 tableHTML += `<td title="${cellValue}">${cellValue}</td>`;
                             }
                             tableHTML += '</tr>';
                         });
                         
-                        tableHTML += '</tbody></table>';
+                        tableHTML += '</tbody></table></div>';
                         table.innerHTML = tableHTML;
                     } else {
                         table.innerHTML = '<div class="preview-empty">Nu există date de previzualizat</div>';

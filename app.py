@@ -724,6 +724,7 @@ Echipa Integral ProjectText FileProcessor"""
             body=text_body,
             sender=sender
         )
+        msg.content_subtype = 'html'  # Ensure HTML is used
         
         print("EMAIL DEBUG: Attempting to send email...")
         try:
@@ -953,10 +954,10 @@ def preview_file(folder, filename):
         wb = openpyxl.load_workbook(filepath, read_only=True, data_only=True)
         sheet = wb.active
         
-        # Get preview data (first 10 rows, first 10 columns)
+        # Get preview data (all rows, all columns - will be scrolled in UI)
         preview_data = []
-        max_rows = min(10, sheet.max_row)
-        max_cols = min(10, sheet.max_column)
+        max_rows = sheet.max_row
+        max_cols = sheet.max_column
         
         for row_idx in range(1, max_rows + 1):
             row_data = []

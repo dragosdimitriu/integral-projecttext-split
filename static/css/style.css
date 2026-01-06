@@ -94,25 +94,20 @@ header {
     border-color: rgba(255, 255, 255, 0.5);
 }
 
-.logo-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 30px;
-    margin-top: 40px;
-}
-
-.logo-main {
-    height: 60px;
-    width: auto;
-}
-
 .header-content {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 30px;
     flex-wrap: wrap;
+}
+
+.logos-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
 }
 
 .icon-wrapper {
@@ -137,6 +132,17 @@ header {
     height: 60px;
     width: auto;
     filter: brightness(1.1);
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo-main {
+    height: 50px;
+    width: auto;
 }
 
 .header-text {
@@ -607,11 +613,11 @@ footer a:hover {
 }
 
 .preview-table-container {
+    max-height: 600px;
+    overflow-y: auto;
     overflow-x: auto;
     border: 1px solid var(--border);
     border-radius: 8px;
-    max-height: 400px;
-    overflow-y: auto;
 }
 
 .preview-table {
