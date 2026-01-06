@@ -47,15 +47,8 @@
                         <label for="file">Select Excel File (.xlsx or .xls)</label>
                         <input type="file" id="file" name="file" accept=".xlsx,.xls" required>
                     </div>
-                    <div class="form-group">
-                        <label for="column">Column Name (e.g., A, B, C)</label>
-                        <input type="text" id="column" name="column" placeholder="Enter column letter" required pattern="[A-Za-z]+" maxlength="3">
-                    </div>
-                    <div class="form-group">
-                        <label for="max_chars">Maximum Characters per Cell</label>
-                        <input type="number" id="max_chars" name="max_chars" placeholder="Enter max characters" required min="1">
-                    </div>
                     <button type="submit" class="btn btn-primary">Upload File</button>
+                    <p class="form-hint">After uploading, set the column and max characters for each file before processing.</p>
                 </form>
             </section>
 
@@ -218,10 +211,26 @@
                 const uploadTime = file.upload_time ? formatTime(file.upload_time) : 'Unknown';
                 // Create a closure-safe reference to the file data
                 const fileData = file;
+                // Use stored values or defaults
+                const defaultColumn = file.column || '';
+                const defaultMaxChars = file.max_chars || '';
                 fileItem.innerHTML = `
                     <div class="file-info">
                         <a href="/download/uploads/${file.uploaded_filename}" class="file-link" download>${file.filename}</a>
-                        <span class="file-meta">Column: ${file.column} | Max Chars: ${file.max_chars} | Uploaded: ${uploadTime}</span>
+                        <span class="file-meta">Uploaded: ${uploadTime}</span>
+                    </div>
+                    <div class="file-params">
+                        <div class="param-group">
+                            <label for="column_${file.file_id}">Column:</label>
+                            <input type="text" id="column_${file.file_id}" class="param-input" 
+                                   placeholder="A, B, C..." pattern="[A-Za-z]+" maxlength="3" 
+                                   value="${defaultColumn}" style="text-transform: uppercase;">
+                        </div>
+                        <div class="param-group">
+                            <label for="max_chars_${file.file_id}">Max Chars:</label>
+                            <input type="number" id="max_chars_${file.file_id}" class="param-input" 
+                                   placeholder="1000" min="1" value="${defaultMaxChars}">
+                        </div>
                     </div>
                     <div class="file-actions">
                         <button class="btn btn-preview" onclick="previewFile('uploads', '${file.uploaded_filename}')">Preview</button>
@@ -230,7 +239,39 @@
                 `;
                 // Attach event listener properly
                 const processBtn = fileItem.querySelector('.btn-process');
-                processBtn.addEventListener('click', () => processFile(fileData));
+                processBtn.addEventListener('click', () => {
+                    const columnInput = fileItem.querySelector(`#column_${file.file_id}`);
+                    const maxCharsInput = fileItem.querySelector(`#max_chars_${file.file_id}`);
+                    const column = columnInput.value.trim().toUpperCase();
+                    const maxChars = maxCharsInput.value.trim();
+                    
+                    // Validate inputs
+                    if (!column) {
+                        showNotification('Please enter a column name', 'error');
+                        columnInput.focus();
+                        return;
+                    }
+                    if (!/^[A-Z]+$/.test(column)) {
+                        showNotification('Column must contain only uppercase letters (A-Z)', 'error');
+                        columnInput.focus();
+                        return;
+                    }
+                    if (!maxChars || parseInt(maxChars) < 1) {
+                        showNotification('Please enter a valid max characters value (minimum 1)', 'error');
+                        maxCharsInput.focus();
+                        return;
+                    }
+                    if (parseInt(maxChars) > 10000) {
+                        showNotification('Max characters cannot exceed 10000', 'error');
+                        maxCharsInput.focus();
+                        return;
+                    }
+                    
+                    // Update file data with current values
+                    fileData.column = column;
+                    fileData.max_chars = parseInt(maxChars);
+                    processFile(fileData);
+                });
                 list.appendChild(fileItem);
             });
         }

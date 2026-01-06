@@ -317,11 +317,6 @@ def upload_file():
         return jsonify({'success': False, 'error': 'No file provided'}), 400
     
     file = request.files['file']
-    # Enhanced input sanitization
-    column = sanitize_input(request.form.get('column', ''), max_length=3)
-    if column:
-        column = column.upper()
-    max_chars = sanitize_input(request.form.get('max_chars', ''), max_length=10)
     
     if file.filename == '':
         return jsonify({'success': False, 'error': 'No file selected'}), 400
@@ -329,20 +324,6 @@ def upload_file():
     # Validate file extension
     if not allowed_file(file.filename):
         return jsonify({'success': False, 'error': 'Invalid file type. Please upload .xlsx or .xls files'}), 400
-    
-    # Validate and sanitize column name
-    is_valid, error_msg = validate_column_name(column)
-    if not is_valid:
-        return jsonify({'success': False, 'error': error_msg}), 400
-    
-    # Validate max_chars
-    try:
-        max_chars = int(max_chars)
-        is_valid, error_msg = validate_max_chars(max_chars)
-        if not is_valid:
-            return jsonify({'success': False, 'error': error_msg}), 400
-    except (ValueError, TypeError):
-        return jsonify({'success': False, 'error': 'Invalid max characters value. Must be a number.'}), 400
     
     # Sanitize filename
     original_filename = sanitize_filename(secure_filename(file.filename))
@@ -390,8 +371,6 @@ def upload_file():
         'file_id': file_id,
         'filename': original_filename,
         'uploaded_filename': filename,
-        'column': column,
-        'max_chars': max_chars,
         'upload_time': datetime.now().isoformat()
     })
 
