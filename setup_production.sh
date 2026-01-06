@@ -133,10 +133,11 @@ server {
         proxy_redirect off;
     }
 
-    location /static {
-        alias /home/lastchance/ProjectTextApp/static;
+    location /static/ {
+        alias /home/lastchance/ProjectTextApp/static/;
         expires 30d;
         add_header Cache-Control "public, immutable";
+        access_log off;
     }
 }
 NGINXEOF
