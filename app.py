@@ -1,10 +1,12 @@
 import os
 import time
 import re
+import struct
 from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for
 from werkzeug.utils import secure_filename
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from authlib.integrations.flask_client import OAuth
+from flask_mail import Mail, Message
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import split
@@ -22,7 +24,8 @@ app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24).hex())
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.permanent_session_lifetime = timedelta(days=7)
+# Shorter session timeout: 2 hours (was 7 days)
+app.permanent_session_lifetime = timedelta(hours=2)
 
 # Google OAuth Configuration
 app.config['GOOGLE_CLIENT_ID'] = os.environ.get('GOOGLE_CLIENT_ID', '')
@@ -32,6 +35,19 @@ app.config['GOOGLE_DISCOVERY_URL'] = "https://accounts.google.com/.well-known/op
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['OUTPUT_FOLDER'] = 'outputs'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Email configuration
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'True').lower() == 'true'
+app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'False').lower() == 'true'
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', '')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', '')
+app.config['MAIL_ENABLED'] = os.environ.get('MAIL_ENABLED', 'False').lower() == 'true'
+
+# Initialize Flask-Mail
+mail = Mail(app)
 
 # Initialize Flask-Login
 login_manager = LoginManager()
@@ -115,13 +131,65 @@ def validate_excel_file(filepath):
     except Exception as e:
         return False, f"Invalid Excel file: {str(e)}"
 
+def validate_file_content(filepath):
+    """Enhanced file validation: Check file signature/MIME type"""
+    try:
+        with open(filepath, 'rb') as f:
+            # Read first 8 bytes to check file signature
+            header = f.read(8)
+            
+            # Excel file signatures:
+            # .xlsx: PK\x03\x04 (ZIP archive, Excel 2007+)
+            # .xls: \xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1 (OLE2, Excel 97-2003)
+            
+            if len(header) < 8:
+                return False, "File too small or corrupted"
+            
+            # Check for .xlsx (ZIP-based format)
+            if header[:2] == b'PK':
+                # Verify it's actually a ZIP file
+                if header[2:4] == b'\x03\x04':
+                    return True, None
+            
+            # Check for .xls (OLE2 format)
+            if header[:8] == b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1':
+                return True, None
+            
+            return False, "File does not appear to be a valid Excel file (invalid file signature)"
+    except Exception as e:
+        return False, f"Error reading file: {str(e)}"
+
 def sanitize_filename(filename):
     """Additional sanitization for filename"""
     # Remove any path components
     filename = os.path.basename(filename)
-    # Remove any dangerous characters
+    # Remove any dangerous characters (keep only alphanumeric, dots, underscores, hyphens)
     filename = re.sub(r'[^a-zA-Z0-9._-]', '', filename)
+    # Limit filename length
+    if len(filename) > 255:
+        name, ext = os.path.splitext(filename)
+        filename = name[:255-len(ext)] + ext
     return filename
+
+def sanitize_input(text, max_length=100):
+    """Sanitize and validate text input"""
+    if not text:
+        return None
+    # Remove leading/trailing whitespace
+    text = text.strip()
+    # Limit length
+    if len(text) > max_length:
+        text = text[:max_length]
+    # Remove any control characters
+    text = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', text)
+    return text
+
+def validate_email(email):
+    """Validate email format"""
+    if not email:
+        return False
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return bool(re.match(pattern, email))
 
 @app.route('/')
 @login_required
@@ -187,11 +255,11 @@ def callback():
             'picture': user.picture
         }
         
-        # Make session permanent
+        # Make session permanent (2 hour timeout)
         session.permanent = True
         
-        # Login the user
-        login_user(user, remember=True)
+        # Login the user (don't use remember=True to enforce session timeout)
+        login_user(user, remember=False)
         
         return redirect(url_for('index'))
     except Exception as e:
@@ -203,8 +271,12 @@ def callback():
 @app.route('/logout')
 @login_required
 def logout():
+    # Properly invalidate session
+    user_id = current_user.id if current_user.is_authenticated else None
     logout_user()
     session.clear()
+    # Regenerate session ID to prevent session fixation
+    session.permanent = False
     return redirect(url_for('login'))
 
 @app.route('/upload', methods=['POST'])
@@ -214,8 +286,11 @@ def upload_file():
         return jsonify({'success': False, 'error': 'No file provided'}), 400
     
     file = request.files['file']
-    column = request.form.get('column', '').strip().upper()
-    max_chars = request.form.get('max_chars', '').strip()
+    # Enhanced input sanitization
+    column = sanitize_input(request.form.get('column', ''), max_length=3)
+    if column:
+        column = column.upper()
+    max_chars = sanitize_input(request.form.get('max_chars', ''), max_length=10)
     
     if file.filename == '':
         return jsonify({'success': False, 'error': 'No file selected'}), 400
@@ -256,7 +331,17 @@ def upload_file():
     try:
         file.save(filepath)
         
-        # Validate that the file is actually a valid Excel file
+        # Enhanced file validation: Check file content/signature
+        is_valid, error_msg = validate_file_content(filepath)
+        if not is_valid:
+            # Clean up invalid file
+            try:
+                os.remove(filepath)
+            except:
+                pass
+            return jsonify({'success': False, 'error': error_msg}), 400
+        
+        # Validate that the file is actually a valid Excel file (can be opened)
         is_valid, error_msg = validate_excel_file(filepath)
         if not is_valid:
             # Clean up invalid file
@@ -283,11 +368,17 @@ def upload_file():
 @login_required
 def process_file():
     data = request.json
-    uploaded_filename = data.get('uploaded_filename')
-    column = data.get('column')
-    max_chars = data.get('max_chars')
+    if not data:
+        return jsonify({'success': False, 'error': 'Invalid request data'}), 400
     
-    if not all([uploaded_filename, column, max_chars]):
+    # Enhanced input sanitization
+    uploaded_filename = sanitize_input(data.get('uploaded_filename'), max_length=300)
+    column = sanitize_input(data.get('column'), max_length=3)
+    if column:
+        column = column.upper()
+    max_chars_str = sanitize_input(data.get('max_chars'), max_length=10)
+    
+    if not all([uploaded_filename, column, max_chars_str]):
         return jsonify({'success': False, 'error': 'Missing required parameters'}), 400
     
     # Validate column name again
@@ -297,7 +388,7 @@ def process_file():
     
     # Validate max_chars again
     try:
-        max_chars = int(max_chars)
+        max_chars = int(max_chars_str)
         is_valid, error_msg = validate_max_chars(max_chars)
         if not is_valid:
             return jsonify({'success': False, 'error': error_msg}), 400
@@ -332,6 +423,21 @@ def process_file():
                 output_basename = os.path.basename(output_filename)
                 output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_basename)
                 os.rename(output_filename, output_path)
+                
+                # Send email notification if enabled
+                if app.config['MAIL_ENABLED'] and current_user.is_authenticated:
+                    try:
+                        send_processing_complete_email(
+                            current_user.email,
+                            current_user.name,
+                            uploaded_filename,
+                            output_basename,
+                            round(processing_time, 2)
+                        )
+                    except Exception as e:
+                        # Don't fail the request if email fails
+                        print(f"Failed to send email notification: {str(e)}")
+                
                 return jsonify({
                     'success': True,
                     'message': message,
@@ -345,6 +451,106 @@ def process_file():
             
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+def send_processing_complete_email(user_email, user_name, input_filename, output_filename, processing_time):
+    """Send email notification when processing completes"""
+    if not app.config['MAIL_ENABLED']:
+        return
+    
+    try:
+        # Get base URL from environment or use default
+        base_url = os.environ.get('BASE_URL', '')
+        if not base_url:
+            try:
+                base_url = request.host_url.rstrip('/')
+            except:
+                base_url = 'https://pt.schrack.lastchance.ro'
+        
+        download_url = f"{base_url}/download/outputs/{output_filename}"
+        
+        subject = f"File Processing Complete: {input_filename}"
+        body = f"""Hello {user_name},
+
+Your file has been processed successfully!
+
+Input File: {input_filename}
+Output File: {output_filename}
+Processing Time: {processing_time} seconds
+
+Download your processed file:
+{download_url}
+
+This link will remain valid for 7 days.
+
+Best regards,
+Integral ProjectText FileProcessor"""
+        
+        msg = Message(
+            subject=subject,
+            recipients=[user_email],
+            body=body,
+            sender=app.config['MAIL_DEFAULT_SENDER'] or app.config['MAIL_USERNAME']
+        )
+        mail.send(msg)
+    except Exception as e:
+        # Don't raise - email failure shouldn't break the request
+        print(f"Error sending email notification: {str(e)}")
+
+@app.route('/preview/<folder>/<filename>')
+@login_required
+def preview_file(folder, filename):
+    """Preview Excel file - return first few rows as JSON"""
+    if folder not in ['uploads', 'outputs']:
+        return jsonify({'error': 'Invalid folder'}), 400
+    
+    # Sanitize filename to prevent path traversal
+    filename = sanitize_filename(filename)
+    filepath = os.path.join(folder, filename)
+    
+    # Ensure path is within allowed folder (prevent path traversal)
+    filepath = os.path.normpath(filepath)
+    allowed_path = os.path.normpath(folder)
+    if not filepath.startswith(allowed_path):
+        return jsonify({'error': 'Invalid file path'}), 400
+    
+    if not os.path.exists(filepath):
+        return jsonify({'error': 'File not found'}), 404
+    
+    try:
+        # Load workbook and get first sheet
+        wb = openpyxl.load_workbook(filepath, read_only=True, data_only=True)
+        sheet = wb.active
+        
+        # Get preview data (first 10 rows, first 10 columns)
+        preview_data = []
+        max_rows = min(10, sheet.max_row)
+        max_cols = min(10, sheet.max_column)
+        
+        for row_idx in range(1, max_rows + 1):
+            row_data = []
+            for col_idx in range(1, max_cols + 1):
+                cell = sheet.cell(row=row_idx, column=col_idx)
+                # Get cell value, limit string length for preview
+                value = cell.value
+                if isinstance(value, str) and len(value) > 50:
+                    value = value[:50] + '...'
+                row_data.append(str(value) if value is not None else '')
+            preview_data.append(row_data)
+        
+        wb.close()
+        
+        return jsonify({
+            'success': True,
+            'filename': filename,
+            'sheet_name': sheet.title,
+            'total_rows': sheet.max_row,
+            'total_columns': sheet.max_column,
+            'preview_rows': max_rows,
+            'preview_columns': max_cols,
+            'data': preview_data
+        })
+    except Exception as e:
+        return jsonify({'error': f'Error reading file: {str(e)}'}), 500
 
 @app.route('/download/<folder>/<filename>')
 @login_required
