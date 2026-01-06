@@ -932,6 +932,8 @@
         }
 
         async function previewFile(folder, filename) {
+            console.log('=== PREVIEW FILE CALLED ===', { folder, filename });
+            
             const modal = document.getElementById('previewModal');
             const title = document.getElementById('previewTitle');
             const info = document.getElementById('previewInfo');
@@ -941,6 +943,11 @@
             const pagination = document.getElementById('previewPagination');
             
             // Reset state
+            const isOutputFile = folder === 'outputs';
+            const isInputFile = folder === 'uploads';
+            
+            console.log('File type check:', { folder, isOutputFile, isInputFile });
+            
             previewDataStore = {
                 allData: [],
                 filteredData: [],
@@ -953,9 +960,15 @@
                 sheetName: '',
                 filename: filename,
                 folder: folder,
-                isInputFile: folder === 'uploads',
-                isOutputFile: folder === 'outputs'
+                isInputFile: isInputFile,
+                isOutputFile: isOutputFile
             };
+            
+            console.log('previewDataStore initialized:', {
+                folder: previewDataStore.folder,
+                isOutputFile: previewDataStore.isOutputFile,
+                isInputFile: previewDataStore.isInputFile
+            });
             
             // Show/hide search based on file type
             if (previewDataStore.isInputFile) {
@@ -974,11 +987,18 @@
             pagination.style.display = 'none';
             
             // For output files, hide pagination immediately
+            console.log('Initial pagination check:', {
+                isOutputFile: previewDataStore.isOutputFile,
+                folder: previewDataStore.folder
+            });
+            
             if (previewDataStore.isOutputFile) {
+                console.log('HIDING PAGINATION FOR OUTPUT FILE');
                 pagination.style.display = 'none';
                 pagination.style.visibility = 'hidden';
                 pagination.setAttribute('data-output-file', 'true');
             } else {
+                console.log('SHOWING PAGINATION FOR INPUT FILE');
                 pagination.removeAttribute('data-output-file');
             }
             
