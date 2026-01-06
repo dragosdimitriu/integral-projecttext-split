@@ -718,22 +718,23 @@
         }
 
         function toggleFaq(element) {
-            const answer = element.nextElementSibling;
+            const faqItem = element.closest('.faq-item');
             const toggle = element.querySelector('.faq-toggle');
             
-            if (answer.style.display === 'block') {
-                answer.style.display = 'none';
-                toggle.textContent = '+';
-            } else {
-                // Close other open FAQs
-                document.querySelectorAll('.faq-answer').forEach(ans => {
-                    ans.style.display = 'none';
-                });
-                document.querySelectorAll('.faq-toggle').forEach(tog => {
-                    tog.textContent = '+';
-                });
-                
-                answer.style.display = 'block';
+            // Check if this FAQ is already active
+            const isActive = faqItem.classList.contains('active');
+            
+            // Close all FAQs first
+            document.querySelectorAll('.faq-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelectorAll('.faq-toggle').forEach(tog => {
+                tog.textContent = '+';
+            });
+            
+            // If this FAQ wasn't active, open it
+            if (!isActive) {
+                faqItem.classList.add('active');
                 toggle.textContent = '−';
             }
         }
