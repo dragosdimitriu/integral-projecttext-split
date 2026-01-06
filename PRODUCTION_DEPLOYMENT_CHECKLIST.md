@@ -83,6 +83,8 @@ source venv/bin/activate
 pip install -r requirements-prod.txt
 ```
 
+**Note:** The `processing_stats.json` file will be created automatically on first run. No manual creation needed.
+
 ### Step 5: Update Environment Variables
 
 ```bash
@@ -158,10 +160,14 @@ sudo systemctl start integral-projecttext
 
 - [ ] Application loads at https://pt.schrack.lastchance.ro
 - [ ] Google OAuth login works
-- [ ] File upload works
+- [ ] File upload works (drag-and-drop and click to browse)
 - [ ] File processing works
-- [ ] Email notifications are sent
+- [ ] Email notifications are sent (check HTML formatting in Gmail)
 - [ ] Output files can be downloaded
+- [ ] Statistics dashboard displays correctly
+- [ ] Preview modal shows all rows with scrolling
+- [ ] Romanian interface displays correctly
+- [ ] Max chars defaults to 20
 - [ ] No errors in logs
 
 ## Troubleshooting
