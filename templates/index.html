@@ -82,20 +82,6 @@
         </div>
 
         <div id="notification" class="notification"></div>
-
-        <!-- Preview Modal -->
-        <div id="previewModal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3 id="previewTitle">File Preview</h3>
-                    <button class="modal-close" onclick="closePreview()">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div id="previewInfo" class="preview-info"></div>
-                    <div id="previewTable" class="preview-table-container"></div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script>
@@ -223,10 +209,7 @@
                         <a href="/download/uploads/${file.uploaded_filename}" class="file-link" download>${file.filename}</a>
                         <span class="file-meta">Column: ${file.column} | Max Chars: ${file.max_chars} | Uploaded: ${uploadTime}</span>
                     </div>
-                    <div class="file-actions">
-                        <button class="btn btn-preview" onclick="previewFile('uploads', '${file.uploaded_filename}')">Preview</button>
-                        <button class="btn btn-process">Process</button>
-                    </div>
+                    <button class="btn btn-process">Process</button>
                 `;
                 // Attach event listener properly
                 const processBtn = fileItem.querySelector('.btn-process');
@@ -305,9 +288,6 @@
                         <a href="/download/outputs/${file.filename}" class="file-link" download>${file.filename}</a>
                         <span class="file-meta">Ready for download | Processing time: ${file.processing_time} sec | Created: ${createdTime}</span>
                     </div>
-                    <div class="file-actions">
-                        <button class="btn btn-preview" onclick="previewFile('outputs', '${file.filename}')">Preview</button>
-                    </div>
                 `;
                 list.appendChild(fileItem);
             });
@@ -332,81 +312,6 @@
                 notification.style.display = 'none';
                 notification.classList.remove('fade-out');
             }, timeout);
-        }
-
-        async function previewFile(folder, filename) {
-            const modal = document.getElementById('previewModal');
-            const title = document.getElementById('previewTitle');
-            const info = document.getElementById('previewInfo');
-            const table = document.getElementById('previewTable');
-            
-            // Show modal with loading state
-            modal.style.display = 'flex';
-            title.textContent = 'Loading preview...';
-            info.innerHTML = '';
-            table.innerHTML = '<div class="loading">Loading file preview...</div>';
-            
-            try {
-                const response = await fetch(`/preview/${folder}/${filename}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    title.textContent = `Preview: ${data.filename}`;
-                    info.innerHTML = `
-                        <div class="preview-meta">
-                            <span><strong>Sheet:</strong> ${data.sheet_name}</span>
-                            <span><strong>Total Rows:</strong> ${data.total_rows}</span>
-                            <span><strong>Total Columns:</strong> ${data.total_columns}</span>
-                            <span><strong>Preview:</strong> First ${data.preview_rows} rows, ${data.preview_columns} columns</span>
-                        </div>
-                    `;
-                    
-                    // Create preview table
-                    if (data.data && data.data.length > 0) {
-                        let tableHTML = '<table class="preview-table"><thead><tr>';
-                        // Header row
-                        for (let i = 0; i < data.preview_columns; i++) {
-                            tableHTML += `<th>${String.fromCharCode(65 + i)}</th>`;
-                        }
-                        tableHTML += '</tr></thead><tbody>';
-                        
-                        // Data rows
-                        data.data.forEach((row, rowIdx) => {
-                            tableHTML += '<tr>';
-                            for (let i = 0; i < data.preview_columns; i++) {
-                                const cellValue = row[i] || '';
-                                tableHTML += `<td title="${cellValue}">${cellValue}</td>`;
-                            }
-                            tableHTML += '</tr>';
-                        });
-                        
-                        tableHTML += '</tbody></table>';
-                        table.innerHTML = tableHTML;
-                    } else {
-                        table.innerHTML = '<div class="preview-empty">No data to preview</div>';
-                    }
-                } else {
-                    title.textContent = 'Preview Error';
-                    info.innerHTML = '';
-                    table.innerHTML = `<div class="preview-error">${data.error || 'Failed to load preview'}</div>`;
-                }
-            } catch (error) {
-                title.textContent = 'Preview Error';
-                info.innerHTML = '';
-                table.innerHTML = `<div class="preview-error">Error loading preview: ${error.message}</div>`;
-            }
-        }
-
-        function closePreview() {
-            document.getElementById('previewModal').style.display = 'none';
-        }
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('previewModal');
-            if (event.target === modal) {
-                closePreview();
-            }
         }
     </script>
 </body>

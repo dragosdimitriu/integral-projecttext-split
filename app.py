@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import re
 import struct
@@ -12,6 +13,16 @@ from datetime import datetime, timedelta
 import split
 import uuid
 import openpyxl
+
+# Force unbuffered output for better debugging
+try:
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.stderr.reconfigure(line_buffering=True)
+except:
+    # Fallback for older Python versions
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, line_buffering=True)
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, line_buffering=True)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -48,6 +59,23 @@ app.config['MAIL_ENABLED'] = os.environ.get('MAIL_ENABLED', 'False').lower() == 
 
 # Initialize Flask-Mail
 mail = Mail(app)
+
+# Debug: Print email configuration on startup
+if app.config['MAIL_ENABLED']:
+    print("\n" + "="*60)
+    print("EMAIL CONFIGURATION (on startup):")
+    print("="*60)
+    print(f"MAIL_ENABLED: {app.config['MAIL_ENABLED']}")
+    print(f"MAIL_SERVER: {app.config['MAIL_SERVER']}")
+    print(f"MAIL_PORT: {app.config['MAIL_PORT']}")
+    print(f"MAIL_USE_TLS: {app.config['MAIL_USE_TLS']}")
+    print(f"MAIL_USE_SSL: {app.config['MAIL_USE_SSL']}")
+    print(f"MAIL_USERNAME: {app.config['MAIL_USERNAME']}")
+    print(f"MAIL_PASSWORD: {'*' * len(app.config['MAIL_PASSWORD']) if app.config['MAIL_PASSWORD'] else 'NOT SET'}")
+    print(f"MAIL_DEFAULT_SENDER: {app.config['MAIL_DEFAULT_SENDER']}")
+    print("="*60 + "\n")
+else:
+    print("EMAIL DEBUG: Email notifications are DISABLED (MAIL_ENABLED=False)")
 
 # Initialize Flask-Login
 login_manager = LoginManager()
@@ -173,8 +201,11 @@ def sanitize_filename(filename):
 
 def sanitize_input(text, max_length=100):
     """Sanitize and validate text input"""
-    if not text:
+    if text is None:
         return None
+    # Convert to string if it's not already
+    if not isinstance(text, str):
+        text = str(text)
     # Remove leading/trailing whitespace
     text = text.strip()
     # Limit length
@@ -376,9 +407,13 @@ def process_file():
     column = sanitize_input(data.get('column'), max_length=3)
     if column:
         column = column.upper()
-    max_chars_str = sanitize_input(data.get('max_chars'), max_length=10)
     
-    if not all([uploaded_filename, column, max_chars_str]):
+    # Handle max_chars - it might be int or string from JSON
+    max_chars_value = data.get('max_chars')
+    if max_chars_value is None:
+        return jsonify({'success': False, 'error': 'Missing max_chars parameter'}), 400
+    
+    if not all([uploaded_filename, column]):
         return jsonify({'success': False, 'error': 'Missing required parameters'}), 400
     
     # Validate column name again
@@ -386,9 +421,9 @@ def process_file():
     if not is_valid:
         return jsonify({'success': False, 'error': error_msg}), 400
     
-    # Validate max_chars again
+    # Validate max_chars - convert to int (handles both int and string)
     try:
-        max_chars = int(max_chars_str)
+        max_chars = int(max_chars_value)
         is_valid, error_msg = validate_max_chars(max_chars)
         if not is_valid:
             return jsonify({'success': False, 'error': error_msg}), 400
@@ -426,6 +461,7 @@ def process_file():
                 
                 # Send email notification if enabled
                 if app.config['MAIL_ENABLED'] and current_user.is_authenticated:
+                    print(f"\nEMAIL DEBUG: Attempting to send email to {current_user.email}")
                     try:
                         send_processing_complete_email(
                             current_user.email,
@@ -436,7 +472,13 @@ def process_file():
                         )
                     except Exception as e:
                         # Don't fail the request if email fails
-                        print(f"Failed to send email notification: {str(e)}")
+                        print(f"EMAIL DEBUG: Exception caught in process_file: {str(e)}")
+                        import traceback
+                        traceback.print_exc()
+                elif not app.config['MAIL_ENABLED']:
+                    print("EMAIL DEBUG: Email disabled or user not authenticated - skipping email")
+                elif not current_user.is_authenticated:
+                    print("EMAIL DEBUG: User not authenticated - skipping email")
                 
                 return jsonify({
                     'success': True,
@@ -454,8 +496,23 @@ def process_file():
 
 def send_processing_complete_email(user_email, user_name, input_filename, output_filename, processing_time):
     """Send email notification when processing completes"""
+    print("\n" + "="*60)
+    print("EMAIL DEBUG: Starting email send process")
+    print("="*60)
+    
     if not app.config['MAIL_ENABLED']:
+        print("EMAIL DEBUG: MAIL_ENABLED is False - email disabled")
+        print("="*60 + "\n")
         return
+    
+    print(f"EMAIL DEBUG: MAIL_ENABLED = {app.config['MAIL_ENABLED']}")
+    print(f"EMAIL DEBUG: MAIL_SERVER = {app.config['MAIL_SERVER']}")
+    print(f"EMAIL DEBUG: MAIL_PORT = {app.config['MAIL_PORT']}")
+    print(f"EMAIL DEBUG: MAIL_USE_TLS = {app.config['MAIL_USE_TLS']}")
+    print(f"EMAIL DEBUG: MAIL_USE_SSL = {app.config['MAIL_USE_SSL']}")
+    print(f"EMAIL DEBUG: MAIL_USERNAME = {app.config['MAIL_USERNAME']}")
+    print(f"EMAIL DEBUG: MAIL_PASSWORD = {'*' * len(app.config['MAIL_PASSWORD']) if app.config['MAIL_PASSWORD'] else 'NOT SET'}")
+    print(f"EMAIL DEBUG: MAIL_DEFAULT_SENDER = {app.config['MAIL_DEFAULT_SENDER']}")
     
     try:
         # Get base URL from environment or use default
@@ -463,10 +520,15 @@ def send_processing_complete_email(user_email, user_name, input_filename, output
         if not base_url:
             try:
                 base_url = request.host_url.rstrip('/')
+                print(f"EMAIL DEBUG: Using request host URL: {base_url}")
             except:
                 base_url = 'https://pt.schrack.lastchance.ro'
+                print(f"EMAIL DEBUG: Using default URL: {base_url}")
+        else:
+            print(f"EMAIL DEBUG: Using BASE_URL from env: {base_url}")
         
         download_url = f"{base_url}/download/outputs/{output_filename}"
+        print(f"EMAIL DEBUG: Download URL = {download_url}")
         
         subject = f"File Processing Complete: {input_filename}"
         body = f"""Hello {user_name},
@@ -485,16 +547,52 @@ This link will remain valid for 7 days.
 Best regards,
 Integral ProjectText FileProcessor"""
         
+        # Determine sender - use MAIL_DEFAULT_SENDER or fallback to MAIL_USERNAME
+        sender = app.config['MAIL_DEFAULT_SENDER']
+        if not sender:
+            # Fallback to MAIL_USERNAME if it's a valid email
+            sender = app.config['MAIL_USERNAME'] if app.config['MAIL_USERNAME'] and '@' in app.config['MAIL_USERNAME'] else None
+            print(f"EMAIL DEBUG: Sender not set, using fallback: {sender}")
+        
+        if not sender:
+            print("EMAIL DEBUG: WARNING - MAIL_DEFAULT_SENDER not set. Email may fail.")
+            sender = app.config['MAIL_USERNAME'] if app.config['MAIL_USERNAME'] else 'noreply@example.com'
+            print(f"EMAIL DEBUG: Using fallback sender: {sender}")
+        else:
+            print(f"EMAIL DEBUG: Using sender: {sender}")
+        
+        print(f"EMAIL DEBUG: Recipient: {user_email}")
+        print(f"EMAIL DEBUG: Subject: {subject}")
+        print(f"EMAIL DEBUG: Body length: {len(body)} characters")
+        
         msg = Message(
             subject=subject,
             recipients=[user_email],
             body=body,
-            sender=app.config['MAIL_DEFAULT_SENDER'] or app.config['MAIL_USERNAME']
+            sender=sender
         )
-        mail.send(msg)
+        
+        print("EMAIL DEBUG: Attempting to send email...")
+        try:
+            mail.send(msg)
+            print("EMAIL DEBUG: ✓ Flask-Mail send() completed without exception")
+            print("EMAIL DEBUG: Email sent successfully via Gmail SMTP")
+            print("EMAIL DEBUG: Check spam folder if email is not received")
+        except Exception as send_error:
+            print(f"EMAIL DEBUG: ✗ Flask-Mail send() raised exception: {type(send_error).__name__}")
+            print(f"EMAIL DEBUG: Error: {str(send_error)}")
+            raise  # Re-raise to be caught by outer exception handler
+        print("="*60 + "\n")
+        
     except Exception as e:
         # Don't raise - email failure shouldn't break the request
-        print(f"Error sending email notification: {str(e)}")
+        print(f"EMAIL DEBUG: ✗ ERROR sending email notification")
+        print(f"EMAIL DEBUG: Error type: {type(e).__name__}")
+        print(f"EMAIL DEBUG: Error message: {str(e)}")
+        import traceback
+        print("EMAIL DEBUG: Full traceback:")
+        traceback.print_exc()
+        print("="*60 + "\n")
 
 @app.route('/preview/<folder>/<filename>')
 @login_required
@@ -573,10 +671,63 @@ def download_file(folder, filename):
     
     return send_file(filepath, as_attachment=True)
 
+# Add request logging middleware
+@app.before_request
+def log_request_info():
+    """Log all incoming requests"""
+    print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {request.method} {request.path}")
+    if request.method == 'POST':
+        print(f"  Content-Type: {request.content_type}")
+        if request.is_json:
+            print(f"  JSON Data: {request.json}")
+    sys.stdout.flush()
+
+@app.after_request
+def log_response_info(response):
+    """Log all responses"""
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {response.status_code} {request.method} {request.path}")
+    sys.stdout.flush()
+    return response
+
 if __name__ == '__main__':
     # Development server only - DO NOT use in production!
     # Use gunicorn, waitress, or another WSGI server for production
     # See DEPLOYMENT.md for production deployment instructions
-    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
-    app.run(debug=debug_mode, host='0.0.0.0', port=5000)
+    flask_debug_raw = os.environ.get('FLASK_DEBUG', 'True')
+    debug_mode = flask_debug_raw.lower() == 'true'  # Default to True for local dev
+    print(f"DEBUG: FLASK_DEBUG from environment: '{flask_debug_raw}' -> debug_mode={debug_mode}", flush=True)
+    
+    # Enable logging for better visibility
+    import logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        force=True  # Force reconfiguration
+    )
+    
+    # Enable Werkzeug request logging
+    log = logging.getLogger('werkzeug')
+    log.setLevel(logging.INFO)
+    log.disabled = False  # Make sure it's enabled
+    
+    # Print startup message
+    print("\n" + "="*60, flush=True)
+    print("Starting Flask Development Server", flush=True)
+    print("="*60, flush=True)
+    print(f"Debug mode: {debug_mode}", flush=True)
+    print(f"Host: 0.0.0.0", flush=True)
+    print(f"Port: 5001", flush=True)
+    print(f"URL: http://localhost:5001", flush=True)
+    print("="*60, flush=True)
+    print("\nRequest logs will appear below...", flush=True)
+    print("-" * 60 + "\n", flush=True)
+    
+    # Use use_reloader=False if output is not showing (reloader can suppress output)
+    use_reloader = debug_mode and os.environ.get('FLASK_USE_RELOADER', 'True').lower() == 'true'
+    
+    # Force Python to use unbuffered mode
+    os.environ['PYTHONUNBUFFERED'] = '1'
+    
+    app.run(debug=debug_mode, host='0.0.0.0', port=5001, use_reloader=use_reloader)
 
