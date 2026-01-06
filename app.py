@@ -932,11 +932,15 @@ def validate_file_advanced():
 @app.route('/preview/<folder>/<filename>')
 @login_required
 def preview_file(folder, filename):
-    """Preview Excel file with pagination - 50 rows per page"""
+    """Preview Excel file with pagination - 50 rows per page for inputs, first 50 only for outputs"""
     if folder not in ['uploads', 'outputs']:
         return jsonify({'success': False, 'error': 'Invalid folder'}), 400
     
-    # Get pagination parameters
+    # For output files, only show first 50 rows (no pagination)
+    # For input files, use pagination
+    is_output_file = folder == 'outputs'
+    
+    # Get pagination parameters (only used for input files)
     page = request.args.get('page', 1, type=int)
     rows_per_page = 50
     
@@ -1005,7 +1009,7 @@ def preview_file(folder, filename):
         wb.close()
         
         # Debug: Print pagination info
-        print(f"DEBUG Preview: total_rows={total_rows}, rows_per_page={rows_per_page}, total_pages={total_pages}, page={page}, start_row={start_row}, end_row={end_row}, data_rows={len(preview_data)}")
+        print(f"DEBUG Preview: folder={folder}, total_rows={total_rows}, rows_per_page={rows_per_page}, total_pages={total_pages}, page={page}, start_row={start_row}, end_row={end_row}, data_rows={len(preview_data)}")
         
         return jsonify({
             'success': True,
@@ -1020,6 +1024,7 @@ def preview_file(folder, filename):
             'rows_per_page': rows_per_page,
             'start_row': start_row,
             'end_row': end_row,
+            'is_output_file': is_output_file,
             'data': preview_data
         })
     except MemoryError:

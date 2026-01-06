@@ -700,6 +700,12 @@
                 return;
             }
             
+            // Hide pagination for output files (only show first 50 rows)
+            if (previewDataStore.isOutputFile) {
+                pagination.style.display = 'none';
+                return;
+            }
+            
             // Always show pagination if there are more than 50 rows, even if totalPages is 1
             if (previewDataStore.totalPages <= 1 && previewDataStore.totalRows <= 50) {
                 pagination.style.display = 'none';
@@ -822,6 +828,7 @@
             
             let totalRows = previewDataStore.totalRows;
             let totalPages = previewDataStore.totalPages;
+            let displayedRows = previewDataStore.isOutputFile ? Math.min(50, totalRows) : (data ? (data.end_row - data.start_row + 1) : 50);
             
             if (searchTerm && previewDataStore.isInputFile) {
                 totalRows = previewDataStore.filteredData.length;
@@ -833,8 +840,16 @@
                     <span><strong>Foaie:</strong> ${previewDataStore.sheetName}</span>
                     <span><strong>Total Rânduri:</strong> ${totalRows}</span>
                     <span><strong>Total Coloane:</strong> ${previewDataStore.totalColumns}</span>
-                    <span><strong>Pagina:</strong> ${previewDataStore.currentPage} / ${totalPages}</span>
             `;
+            
+            // For output files, show special message about limited preview
+            if (previewDataStore.isOutputFile && totalRows > 50) {
+                previewInfo += `<span style="color: var(--primary-color); font-weight: 600; display: block; margin-top: 8px; padding: 8px; background: rgba(74, 71, 138, 0.1); border-radius: 6px;">
+                    ⚠️ Fișier procesat: Total ${totalRows} rânduri, se afișează doar primele 50. Descărcați fișierul pentru a vedea toate datele.
+                </span>`;
+            } else if (!previewDataStore.isOutputFile) {
+                previewInfo += `<span><strong>Pagina:</strong> ${previewDataStore.currentPage} / ${totalPages}</span>`;
+            }
             
             if (previewDataStore.has_more_columns) {
                 previewInfo += `<span><strong>Coloane afișate:</strong> ${previewDataStore.previewColumns} (din ${previewDataStore.totalColumns} total)</span>`;
@@ -914,7 +929,8 @@
                 sheetName: '',
                 filename: filename,
                 folder: folder,
-                isInputFile: folder === 'uploads'
+                isInputFile: folder === 'uploads',
+                isOutputFile: folder === 'outputs'
             };
             
             // Show/hide search based on file type
@@ -963,8 +979,13 @@
                     previewDataStore.previewColumns = data.preview_columns;
                     previewDataStore.has_more_columns = data.has_more_columns || false;
                     previewDataStore.currentPage = data.current_page || 1;
-                    // Calculate totalPages from total_rows if not provided, or use provided value
-                    if (data.total_pages && data.total_pages > 0) {
+                    previewDataStore.isOutputFile = data.is_output_file || false;
+                    
+                    // For output files, always 1 page (only first 50 rows shown)
+                    // For input files, calculate totalPages from total_rows if not provided
+                    if (previewDataStore.isOutputFile) {
+                        previewDataStore.totalPages = 1;
+                    } else if (data.total_pages && data.total_pages > 0) {
                         previewDataStore.totalPages = data.total_pages;
                     } else {
                         // Calculate it ourselves from total_rows
