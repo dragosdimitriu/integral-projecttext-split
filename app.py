@@ -717,6 +717,7 @@ Echipa Integral ProjectText FileProcessor"""
         print(f"EMAIL DEBUG: Subject: {subject}")
         print(f"EMAIL DEBUG: HTML body length: {len(html_body)} characters")
         
+        # Create message with both HTML and plain text (multipart)
         msg = Message(
             subject=subject,
             recipients=[user_email],
@@ -724,7 +725,6 @@ Echipa Integral ProjectText FileProcessor"""
             body=text_body,
             sender=sender
         )
-        msg.content_subtype = 'html'  # Ensure HTML is used
         
         print("EMAIL DEBUG: Attempting to send email...")
         try:
