@@ -131,7 +131,7 @@ sudo netstat -tulpn | grep 5000
 ### Service won't start:
 - Check logs: `sudo journalctl -u integral-projecttext -n 50`
 - Verify .env file exists and has correct values
-- Check file permissions: `sudo chown -R appuser:appuser /home/appuser/app`
+- Check file permissions: `sudo chown -R lastchance:lastchance /home/lastchance/app`
 
 ### Nginx 502 Bad Gateway:
 - Verify Gunicorn is running: `sudo systemctl status integral-projecttext`
