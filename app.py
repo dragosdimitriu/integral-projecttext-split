@@ -1,18 +1,79 @@
 import os
 import time
 import re
-from flask import Flask, render_template, request, jsonify, send_file, session
+from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for
 from werkzeug.utils import secure_filename
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from authlib.integrations.flask_client import OAuth
+from dotenv import load_dotenv
+from datetime import datetime, timedelta
 import split
 import uuid
-from datetime import datetime
 import openpyxl
 
+# Load environment variables from .env file
+load_dotenv()
+
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24).hex())
+
+# Session configuration
+# Set SESSION_COOKIE_SECURE=True in production when using HTTPS
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.permanent_session_lifetime = timedelta(days=7)
+
+# Google OAuth Configuration
+app.config['GOOGLE_CLIENT_ID'] = os.environ.get('GOOGLE_CLIENT_ID', '')
+app.config['GOOGLE_CLIENT_SECRET'] = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+app.config['GOOGLE_DISCOVERY_URL'] = "https://accounts.google.com/.well-known/openid-configuration"
+
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['OUTPUT_FOLDER'] = 'outputs'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Please log in to access this page.'
+
+# Initialize OAuth
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id=app.config['GOOGLE_CLIENT_ID'],
+    client_secret=app.config['GOOGLE_CLIENT_SECRET'],
+    server_metadata_url=app.config['GOOGLE_DISCOVERY_URL'],
+    client_kwargs={
+        'scope': 'openid email profile',
+        'prompt': 'select_account'
+    }
+)
+
+# User class for Flask-Login
+class User(UserMixin):
+    def __init__(self, id, email, name, picture):
+        self.id = id
+        self.email = email
+        self.name = name
+        self.picture = picture
+
+@login_manager.user_loader
+def load_user(user_id):
+    # Load user from session
+    if 'user_info' in session:
+        user_info = session['user_info']
+        # Verify the user_id matches
+        if user_info.get('id') == user_id:
+            return User(
+                id=user_info['id'],
+                email=user_info['email'],
+                name=user_info['name'],
+                picture=user_info.get('picture', '')
+            )
+    return None
 
 # Create necessary directories
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -63,10 +124,91 @@ def sanitize_filename(filename):
     return filename
 
 @app.route('/')
+@login_required
 def index():
-    return render_template('index.html')
+    # Ensure user is properly loaded
+    if not current_user.is_authenticated:
+        return redirect(url_for('login'))
+    return render_template('index.html', user=current_user)
+
+@app.route('/login')
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    return render_template('login.html')
+
+@app.route('/auth/google')
+def google_login():
+    redirect_uri = url_for('callback', _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+@app.route('/callback')
+def callback():
+    try:
+        token = google.authorize_access_token()
+        
+        if not token:
+            return render_template('login.html', error="Failed to get access token from Google"), 400
+        
+        # Fetch user info from Google - Authlib handles the userinfo endpoint automatically
+        # Try using the token directly with the userinfo endpoint
+        resp = google.get('https://www.googleapis.com/oauth2/v2/userinfo', token=token)
+        
+        if resp.status_code != 200:
+            # Try alternative endpoint
+            resp = google.get('https://openidconnect.googleapis.com/v1/userinfo', token=token)
+            if resp.status_code != 200:
+                return render_template('login.html', error=f"Failed to fetch user info: HTTP {resp.status_code}"), 400
+        
+        user_info = resp.json()
+        
+        # Create user object - handle both 'sub' and 'id' fields
+        user_id = user_info.get('sub') or user_info.get('id', '')
+        if not user_id:
+            return render_template('login.html', error="Failed to get user ID from Google"), 400
+        
+        user_email = user_info.get('email', '')
+        user_name = user_info.get('name', user_email or 'Unknown')
+        user_picture = user_info.get('picture', '')
+        
+        # Create user object
+        user = User(
+            id=user_id,
+            email=user_email,
+            name=user_name,
+            picture=user_picture
+        )
+        
+        # Store user info in session BEFORE login_user
+        session['user_info'] = {
+            'id': user.id,
+            'email': user.email,
+            'name': user.name,
+            'picture': user.picture
+        }
+        
+        # Make session permanent
+        session.permanent = True
+        
+        # Login the user
+        login_user(user, remember=True)
+        
+        return redirect(url_for('index'))
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Authentication error: {error_details}")  # Debug output
+        return render_template('login.html', error=f"Error during authentication: {str(e)}"), 400
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    session.clear()
+    return redirect(url_for('login'))
 
 @app.route('/upload', methods=['POST'])
+@login_required
 def upload_file():
     if 'file' not in request.files:
         return jsonify({'success': False, 'error': 'No file provided'}), 400
@@ -138,6 +280,7 @@ def upload_file():
     })
 
 @app.route('/process', methods=['POST'])
+@login_required
 def process_file():
     data = request.json
     uploaded_filename = data.get('uploaded_filename')
@@ -204,6 +347,7 @@ def process_file():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/download/<folder>/<filename>')
+@login_required
 def download_file(folder, filename):
     if folder not in ['uploads', 'outputs']:
         return jsonify({'error': 'Invalid folder'}), 400
@@ -224,5 +368,9 @@ def download_file(folder, filename):
     return send_file(filepath, as_attachment=True)
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Development server only - DO NOT use in production!
+    # Use gunicorn, waitress, or another WSGI server for production
+    # See DEPLOYMENT.md for production deployment instructions
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(debug=debug_mode, host='0.0.0.0', port=5000)
 

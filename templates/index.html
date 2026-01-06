@@ -25,6 +25,18 @@
                     <p class="subtitle">Process Excel files by splitting long text cells</p>
                 </div>
             </div>
+            {% if user %}
+            <div class="user-menu">
+                <div class="user-info">
+                    <img src="{{ user.picture if user.picture else url_for('static', filename='images/default-avatar.svg') }}" 
+                         alt="User Avatar" 
+                         class="user-avatar"
+                         onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/default-avatar.svg') }}';">
+                    <span class="user-name">{{ user.name }}</span>
+                </div>
+                <a href="{{ url_for('logout') }}" class="btn btn-logout">Logout</a>
+            </div>
+            {% endif %}
         </header>
 
         <main>
