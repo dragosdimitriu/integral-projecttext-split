@@ -646,14 +646,31 @@
                 
                 if (data.success) {
                     title.textContent = `Previzualizare: ${data.filename}`;
-                    info.innerHTML = `
+                    // Build preview info with pagination notice if needed
+                    let previewInfo = `
                         <div class="preview-meta">
                             <span><strong>Foaie:</strong> ${data.sheet_name}</span>
                             <span><strong>Total Rânduri:</strong> ${data.total_rows}</span>
                             <span><strong>Total Coloane:</strong> ${data.total_columns}</span>
-                            <span><strong>Previzualizare:</strong> Toate ${data.total_rows} rânduri, ${data.total_columns} coloane</span>
-                        </div>
-                    `;
+                            <span><strong>Previzualizare:</strong> Primele ${data.preview_rows} rânduri`;
+                    
+                    if (data.has_more_rows) {
+                        previewInfo += ` (din ${data.total_rows} total)`;
+                    }
+                    if (data.has_more_columns) {
+                        previewInfo += `, primele ${data.preview_columns} coloane (din ${data.total_columns} total)`;
+                    } else {
+                        previewInfo += `, ${data.preview_columns} coloane`;
+                    }
+                    previewInfo += `</span>`;
+                    
+                    if (data.has_more_rows || data.has_more_columns) {
+                        previewInfo += `<span style="color: var(--primary-color); font-weight: 600; margin-top: 8px; display: block;">
+                            ⚠️ Fișier mare: Se afișează doar primele ${data.preview_rows} rânduri. Descărcați fișierul pentru a vedea toate datele.
+                        </span>`;
+                    }
+                    previewInfo += `</div>`;
+                    info.innerHTML = previewInfo;
                     
                     // Helper function to convert column index to letter (A, B, ..., Z, AA, AB, ...)
                     function getColumnLetter(index) {
@@ -699,7 +716,12 @@
             } catch (error) {
                 title.textContent = 'Eroare Previzualizare';
                 info.innerHTML = '';
-                table.innerHTML = `<div class="preview-error">Eroare la încărcarea previzualizării: ${error.message}</div>`;
+                // Check if error is due to HTML response instead of JSON
+                let errorMsg = error.message;
+                if (errorMsg.includes("Unexpected token") || errorMsg.includes("JSON")) {
+                    errorMsg = 'Fișierul este prea mare sau serverul nu a putut procesa cererea. Vă rugăm să descărcați fișierul pentru a-l vedea complet.';
+                }
+                table.innerHTML = `<div class="preview-error">Eroare la încărcarea previzualizării: ${errorMsg}</div>`;
             }
         }
 

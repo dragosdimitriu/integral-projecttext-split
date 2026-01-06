@@ -932,9 +932,9 @@ def validate_file_advanced():
 @app.route('/preview/<folder>/<filename>')
 @login_required
 def preview_file(folder, filename):
-    """Preview Excel file - return first few rows as JSON"""
+    """Preview Excel file - return first 500 rows as JSON (optimized for large files)"""
     if folder not in ['uploads', 'outputs']:
-        return jsonify({'error': 'Invalid folder'}), 400
+        return jsonify({'success': False, 'error': 'Invalid folder'}), 400
     
     # Sanitize filename to prevent path traversal
     filename = sanitize_filename(filename)
@@ -944,30 +944,51 @@ def preview_file(folder, filename):
     filepath = os.path.normpath(filepath)
     allowed_path = os.path.normpath(folder)
     if not filepath.startswith(allowed_path):
-        return jsonify({'error': 'Invalid file path'}), 400
+        return jsonify({'success': False, 'error': 'Invalid file path'}), 400
     
     if not os.path.exists(filepath):
-        return jsonify({'error': 'File not found'}), 404
+        return jsonify({'success': False, 'error': 'File not found'}), 404
     
     try:
-        # Load workbook and get first sheet
+        # Load workbook in read-only mode for better performance
         wb = openpyxl.load_workbook(filepath, read_only=True, data_only=True)
         sheet = wb.active
         
-        # Get preview data (all rows, all columns - will be scrolled in UI)
-        preview_data = []
-        max_rows = sheet.max_row
-        max_cols = sheet.max_column
+        # Get total dimensions
+        total_rows = sheet.max_row
+        total_cols = sheet.max_column
         
-        for row_idx in range(1, max_rows + 1):
+        # Limit preview to first 500 rows to prevent timeout and memory issues
+        # For files with thousands of rows, showing all at once is not practical
+        PREVIEW_ROW_LIMIT = 500
+        preview_row_count = min(PREVIEW_ROW_LIMIT, total_rows)
+        preview_col_count = min(50, total_cols)  # Limit columns too for very wide files
+        
+        # Get preview data efficiently
+        preview_data = []
+        
+        # Use iter_rows for better memory efficiency
+        for row_idx, row in enumerate(sheet.iter_rows(min_row=1, max_row=preview_row_count, 
+                                                      min_col=1, max_col=preview_col_count, 
+                                                      values_only=True), start=1):
             row_data = []
-            for col_idx in range(1, max_cols + 1):
-                cell = sheet.cell(row=row_idx, column=col_idx)
+            for cell_value in row:
                 # Get cell value, limit string length for preview
-                value = cell.value
-                if isinstance(value, str) and len(value) > 50:
-                    value = value[:50] + '...'
-                row_data.append(str(value) if value is not None else '')
+                if cell_value is None:
+                    row_data.append('')
+                elif isinstance(cell_value, str):
+                    # Limit string length to prevent huge JSON responses
+                    if len(cell_value) > 100:
+                        row_data.append(cell_value[:100] + '...')
+                    else:
+                        row_data.append(cell_value)
+                else:
+                    # Convert other types to string
+                    str_value = str(cell_value)
+                    if len(str_value) > 100:
+                        row_data.append(str_value[:100] + '...')
+                    else:
+                        row_data.append(str_value)
             preview_data.append(row_data)
         
         wb.close()
@@ -976,14 +997,22 @@ def preview_file(folder, filename):
             'success': True,
             'filename': filename,
             'sheet_name': sheet.title,
-            'total_rows': sheet.max_row,
-            'total_columns': sheet.max_column,
-            'preview_rows': max_rows,
-            'preview_columns': max_cols,
+            'total_rows': total_rows,
+            'total_columns': total_cols,
+            'preview_rows': preview_row_count,
+            'preview_columns': preview_col_count,
+            'has_more_rows': total_rows > PREVIEW_ROW_LIMIT,
+            'has_more_columns': total_cols > 50,
             'data': preview_data
         })
+    except MemoryError:
+        return jsonify({'success': False, 'error': 'Fișierul este prea mare pentru previzualizare. Vă rugăm să-l descărcați pentru a-l vedea complet.'}), 413
     except Exception as e:
-        return jsonify({'error': f'Error reading file: {str(e)}'}), 500
+        # Ensure we always return JSON, not HTML
+        error_msg = str(e)
+        if len(error_msg) > 200:
+            error_msg = error_msg[:200] + '...'
+        return jsonify({'success': False, 'error': f'Eroare la citirea fișierului: {error_msg}'}), 500
 
 @app.route('/download/<folder>/<filename>')
 @login_required
