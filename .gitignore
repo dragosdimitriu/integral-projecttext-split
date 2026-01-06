@@ -41,3 +41,6 @@ config.env
 
 # Logs
 *.log
+
+# Statistics
+processing_stats.json

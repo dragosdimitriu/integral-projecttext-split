@@ -13,6 +13,8 @@ from datetime import datetime, timedelta
 import split
 import uuid
 import openpyxl
+import json
+from collections import defaultdict
 
 # Force unbuffered output for better debugging
 try:
@@ -122,6 +124,59 @@ def load_user(user_id):
 # Create necessary directories
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
+
+# Statistics tracking file
+STATS_FILE = 'processing_stats.json'
+
+def load_stats():
+    """Load processing statistics from file"""
+    if os.path.exists(STATS_FILE):
+        try:
+            with open(STATS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            pass
+    return {
+        'total_processed': 0,
+        'total_successful': 0,
+        'total_failed': 0,
+        'total_processing_time': 0.0,
+        'processing_history': []
+    }
+
+def save_stats(stats):
+    """Save processing statistics to file"""
+    try:
+        with open(STATS_FILE, 'w') as f:
+            json.dump(stats, f, indent=2)
+    except Exception as e:
+        print(f"Error saving stats: {e}")
+
+def add_processing_record(success, processing_time, user_email=None):
+    """Add a processing record to statistics"""
+    stats = load_stats()
+    stats['total_processed'] += 1
+    if success:
+        stats['total_successful'] += 1
+    else:
+        stats['total_failed'] += 1
+    
+    if processing_time:
+        stats['total_processing_time'] += processing_time
+    
+    # Add to history (keep last 1000 records)
+    stats['processing_history'].append({
+        'timestamp': datetime.now().isoformat(),
+        'success': success,
+        'processing_time': processing_time,
+        'user_email': user_email
+    })
+    
+    # Keep only last 1000 records
+    if len(stats['processing_history']) > 1000:
+        stats['processing_history'] = stats['processing_history'][-1000:]
+    
+    save_stats(stats)
 
 ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
 MAX_COLUMN_LENGTH = 3  # Maximum column name length (e.g., "ZZZ")
@@ -459,6 +514,10 @@ def process_file():
                 elif not current_user.is_authenticated:
                     print("EMAIL DEBUG: User not authenticated - skipping email")
                 
+                # Track successful processing
+                user_email = current_user.email if current_user.is_authenticated else None
+                add_processing_record(True, round(processing_time, 2), user_email)
+                
                 return jsonify({
                     'success': True,
                     'message': message,
@@ -466,11 +525,20 @@ def process_file():
                     'processing_time': round(processing_time, 2)
                 })
             else:
+                # Track failed processing
+                user_email = current_user.email if current_user.is_authenticated else None
+                add_processing_record(False, round(processing_time, 2), user_email)
                 return jsonify({'success': False, 'error': 'Output file was not created'}), 500
         else:
+            # Track failed processing
+            user_email = current_user.email if current_user.is_authenticated else None
+            add_processing_record(False, 0, user_email)
             return jsonify({'success': False, 'error': message}), 500
             
     except Exception as e:
+        # Track failed processing
+        user_email = current_user.email if current_user.is_authenticated else None
+        add_processing_record(False, 0, user_email)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def send_processing_complete_email(user_email, user_name, input_filename, output_filename, processing_time):
@@ -572,6 +640,190 @@ Integral ProjectText FileProcessor"""
         print("EMAIL DEBUG: Full traceback:")
         traceback.print_exc()
         print("="*60 + "\n")
+
+@app.route('/api/statistics')
+@login_required
+def get_statistics():
+    """Get processing statistics"""
+    stats = load_stats()
+    
+    # Calculate averages
+    avg_processing_time = 0.0
+    if stats['total_successful'] > 0:
+        avg_processing_time = stats['total_processing_time'] / stats['total_successful']
+    
+    success_rate = 0.0
+    if stats['total_processed'] > 0:
+        success_rate = (stats['total_successful'] / stats['total_processed']) * 100
+    
+    return jsonify({
+        'success': True,
+        'statistics': {
+            'total_processed': stats['total_processed'],
+            'total_successful': stats['total_successful'],
+            'total_failed': stats['total_failed'],
+            'average_processing_time': round(avg_processing_time, 2),
+            'success_rate': round(success_rate, 2)
+        }
+    })
+
+@app.route('/api/validate-file', methods=['POST'])
+@login_required
+def validate_file_advanced():
+    """Advanced file validation - check if file has only one sheet and only one column with data"""
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'No file provided'}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'success': False, 'error': 'No file selected'}), 400
+    
+    # Validate file extension
+    if not allowed_file(file.filename):
+        return jsonify({'success': False, 'error': 'Invalid file type. Please upload .xlsx or .xls files'}), 400
+    
+    # Save file temporarily for validation
+    temp_filename = f"temp_{uuid.uuid4()}_{secure_filename(file.filename)}"
+    temp_filepath = os.path.join(app.config['UPLOAD_FOLDER'], temp_filename)
+    
+    try:
+        file.save(temp_filepath)
+        
+        # Validate file content/signature
+        is_valid, error_msg = validate_file_content(temp_filepath)
+        if not is_valid:
+            try:
+                os.remove(temp_filepath)
+            except:
+                pass
+            return jsonify({'success': False, 'error': error_msg}), 400
+        
+        # Validate Excel file can be opened
+        is_valid, error_msg = validate_excel_file(temp_filepath)
+        if not is_valid:
+            try:
+                os.remove(temp_filepath)
+            except:
+                pass
+            return jsonify({'success': False, 'error': error_msg}), 400
+        
+        # Advanced validation: Check sheets and columns
+        wb = openpyxl.load_workbook(temp_filepath, read_only=True, data_only=True)
+        sheet_count = len(wb.sheetnames)
+        
+        if sheet_count != 1:
+            wb.close()
+            try:
+                os.remove(temp_filepath)
+            except:
+                pass
+            return jsonify({
+                'success': False,
+                'error': f'File must contain exactly ONE sheet. Found {sheet_count} sheet(s): {", ".join(wb.sheetnames)}',
+                'sheet_count': sheet_count,
+                'sheet_names': wb.sheetnames
+            }), 400
+        
+        sheet = wb.active
+        
+        # Check which columns have data
+        columns_with_data = []
+        from openpyxl.utils import get_column_letter
+        
+        if sheet.max_column > 0 and sheet.max_row > 0:
+            for col_idx in range(1, sheet.max_column + 1):
+                has_data = False
+                for row_idx in range(1, min(sheet.max_row + 1, 1000)):  # Check first 1000 rows
+                    cell = sheet.cell(row=row_idx, column=col_idx)
+                    if cell.value is not None and str(cell.value).strip():
+                        has_data = True
+                        break
+                
+                if has_data:
+                    col_letter = get_column_letter(col_idx)
+                    # Get sample data from first non-empty cell
+                    sample_value = ''
+                    for row_idx in range(1, min(sheet.max_row + 1, 100)):
+                        cell = sheet.cell(row=row_idx, column=col_idx)
+                        if cell.value is not None and str(cell.value).strip():
+                            sample_value = str(cell.value)[:50]
+                            break
+                    
+                    # Calculate average cell length in this column
+                    cell_lengths = []
+                    for row_idx in range(1, min(sheet.max_row + 1, 100)):
+                        cell = sheet.cell(row=row_idx, column=col_idx)
+                        if cell.value is not None and isinstance(cell.value, str):
+                            cell_lengths.append(len(cell.value.strip()))
+                    
+                    avg_length = sum(cell_lengths) / len(cell_lengths) if cell_lengths else 0
+                    max_length = max(cell_lengths) if cell_lengths else 0
+                    
+                    columns_with_data.append({
+                        'letter': col_letter,
+                        'index': col_idx,
+                        'sample': sample_value,
+                        'avg_length': round(avg_length, 0),
+                        'max_length': max_length
+                    })
+        
+        wb.close()
+        
+        # Clean up temp file
+        try:
+            os.remove(temp_filepath)
+        except:
+            pass
+        
+        if len(columns_with_data) == 0:
+            return jsonify({
+                'success': False,
+                'error': 'No data found in the file. The file appears to be empty.',
+                'columns_with_data': []
+            }), 400
+        
+        if len(columns_with_data) > 1:
+            column_letters = [col['letter'] for col in columns_with_data]
+            return jsonify({
+                'success': False,
+                'error': f'Data exists in multiple columns: {", ".join(column_letters)}. Data must exist ONLY in one column.',
+                'columns_with_data': columns_with_data
+            }), 400
+        
+        # File is valid - suggest optimal parameters
+        single_column = columns_with_data[0]
+        suggested_max_chars = int(single_column['max_length'] * 0.8)  # 80% of max length
+        if suggested_max_chars < 100:
+            suggested_max_chars = 100
+        elif suggested_max_chars > 10000:
+            suggested_max_chars = 10000
+        
+        return jsonify({
+            'success': True,
+            'valid': True,
+            'sheet_count': 1,
+            'column_with_data': single_column['letter'],
+            'suggested_parameters': {
+                'column': single_column['letter'],
+                'max_chars': suggested_max_chars,
+                'reason': f"Based on analysis: max cell length is {single_column['max_length']} characters"
+            },
+            'file_info': {
+                'total_rows': sheet.max_row,
+                'total_columns': sheet.max_column,
+                'column_stats': single_column
+            }
+        })
+        
+    except Exception as e:
+        # Clean up temp file on error
+        try:
+            if os.path.exists(temp_filepath):
+                os.remove(temp_filepath)
+        except:
+            pass
+        return jsonify({'success': False, 'error': f'Error validating file: {str(e)}'}), 500
 
 @app.route('/preview/<folder>/<filename>')
 @login_required

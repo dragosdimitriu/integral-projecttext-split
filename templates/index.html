@@ -40,16 +40,41 @@
         </header>
 
         <main>
+            <!-- Statistics Dashboard -->
+            <section class="statistics-section" id="statisticsSection">
+                <h2>Processing Statistics</h2>
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statTotalProcessed">0</div>
+                        <div class="stat-label">Total Files Processed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statAvgTime">0.0s</div>
+                        <div class="stat-label">Average Processing Time</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statSuccessRate">0%</div>
+                        <div class="stat-label">Success Rate</div>
+                    </div>
+                </div>
+            </section>
+
             <section class="upload-section">
                 <h2>Upload File</h2>
-                <form id="uploadForm" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label for="file">Select Excel File (.xlsx or .xls)</label>
-                        <input type="file" id="file" name="file" accept=".xlsx,.xls" required>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-dropzone" id="uploadDropzone">
+                        <div class="upload-icon">📁</div>
+                        <p class="upload-text">Drag and drop Excel files here</p>
+                        <p class="upload-subtext">or click to browse</p>
+                        <input type="file" id="file" name="file" accept=".xlsx,.xls" multiple style="display: none;">
                     </div>
-                    <button type="submit" class="btn btn-primary">Upload File</button>
-                    <p class="form-hint">After uploading, set the column and max characters for each file before processing.</p>
+                    <div id="uploadProgressContainer" style="display: none;">
+                        <div class="upload-progress-list" id="uploadProgressList"></div>
+                    </div>
+                </div>
+                <form id="uploadForm" enctype="multipart/form-data" style="display: none;">
                 </form>
+                <p class="form-hint">After uploading, set the column and max characters for each file before processing.</p>
             </section>
 
             <section class="files-section" id="uploadedFilesSection" style="display: none;">
@@ -62,6 +87,66 @@
                 <h2>Generated Output</h2>
                 <div id="outputFilesList"></div>
                 <button id="showMoreOutput" class="btn btn-show-more" style="display: none;" onclick="toggleOutputFiles()">Show More</button>
+            </section>
+
+            <!-- Help Section -->
+            <section class="help-section" id="helpSection">
+                <h2>
+                    Help & FAQ
+                    <button class="btn-help-toggle" onclick="toggleHelp()">−</button>
+                </h2>
+                <div class="help-content" id="helpContent">
+                    <div class="help-tabs">
+                        <button class="help-tab active" onclick="showHelpTab('faq')">FAQ</button>
+                        <button class="help-tab" onclick="showHelpTab('tutorial')">Tutorial</button>
+                    </div>
+                    
+                    <div class="help-tab-content active" id="helpFaq">
+                        <div class="faq-item">
+                            <h3 class="faq-question" onclick="toggleFaq(this)">What file formats are supported? <span class="faq-toggle">+</span></h3>
+                            <div class="faq-answer">The application supports Excel files in .xlsx and .xls formats. Files must contain exactly one sheet with data in only one column.</div>
+                        </div>
+                        <div class="faq-item">
+                            <h3 class="faq-question" onclick="toggleFaq(this)">What are the file requirements? <span class="faq-toggle">+</span></h3>
+                            <div class="faq-answer">Your Excel file must have: (1) Exactly one sheet, (2) Data in only one column, (3) Maximum file size of 16MB. The application will automatically validate your file before processing.</div>
+                        </div>
+                        <div class="faq-item">
+                            <h3 class="faq-question" onclick="toggleFaq(this)">How does the text splitting work? <span class="faq-toggle">+</span></h3>
+                            <div class="faq-answer">The application splits long text cells at the last space before the maximum character limit. The remaining text is moved to the next column. This process continues until all cells are within the specified limit.</div>
+                        </div>
+                        <div class="faq-item">
+                            <h3 class="faq-question" onclick="toggleFaq(this)">What if I enter wrong parameters? <span class="faq-toggle">+</span></h3>
+                            <div class="faq-answer">No problem! You can adjust the column and max characters for any uploaded file without re-uploading. Just change the values and click Process again.</div>
+                        </div>
+                        <div class="faq-item">
+                            <h3 class="faq-question" onclick="toggleFaq(this)">How do I know which column to use? <span class="faq-toggle">+</span></h3>
+                            <div class="faq-answer">When you upload a file, the application automatically detects which column has data and suggests it. You can also use the Preview button to see your file structure before processing.</div>
+                        </div>
+                        <div class="faq-item">
+                            <h3 class="faq-question" onclick="toggleFaq(this)">What is the maximum character limit? <span class="faq-toggle">+</span></h3>
+                            <div class="faq-answer">The maximum characters per cell can be set between 1 and 10,000. The application will suggest an optimal value based on your file's content when you upload it.</div>
+                        </div>
+                    </div>
+                    
+                    <div class="help-tab-content" id="helpTutorial">
+                        <div class="tutorial-step">
+                            <h3>Step 1: Upload Your File</h3>
+                            <p>Drag and drop your Excel file into the upload area, or click to browse. You can upload multiple files at once. The application will automatically validate your file structure.</p>
+                        </div>
+                        <div class="tutorial-step">
+                            <h3>Step 2: Review Suggested Parameters</h3>
+                            <p>After upload, the application suggests optimal column and max characters based on your file analysis. You can adjust these values if needed.</p>
+                        </div>
+                        <div class="tutorial-step">
+                            <h3>Step 3: Process Your File</h3>
+                            <p>Click the "Process" button to split long text cells. Processing typically takes 5-10 seconds depending on file size.</p>
+                        </div>
+                        <div class="tutorial-step">
+                            <h3>Step 4: Download Result</h3>
+                            <p>Once processing is complete, download your processed file from the "Generated Output" section. You'll also receive an email notification if enabled.</p>
+                        </div>
+                    </div>
+                </div>
             </section>
         </main>
 
@@ -117,37 +202,185 @@
             }
         }
 
-        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const formData = new FormData(e.target);
-            const fileInput = document.getElementById('file');
-            
-            if (!fileInput.files[0]) {
-                showNotification('Please select a file', 'error');
-                return;
-            }
-
+        // Load and display statistics
+        async function loadStatistics() {
             try {
-                const response = await fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-
+                const response = await fetch('/api/statistics');
                 const data = await response.json();
-
+                
                 if (data.success) {
-                    uploadedFiles.push(data);
-                    displayUploadedFiles();
-                    showNotification('File uploaded successfully', 'success');
-                    e.target.reset();
-                } else {
-                    showNotification(data.error || 'Upload failed', 'error');
+                    const stats = data.statistics;
+                    document.getElementById('statTotalProcessed').textContent = stats.total_processed;
+                    document.getElementById('statAvgTime').textContent = `${stats.average_processing_time}s`;
+                    document.getElementById('statSuccessRate').textContent = `${stats.success_rate}%`;
                 }
             } catch (error) {
-                showNotification('Error uploading file: ' + error.message, 'error');
+                console.error('Error loading statistics:', error);
+            }
+        }
+
+        // Initialize statistics on page load
+        loadStatistics();
+        // Refresh statistics every 30 seconds
+        setInterval(loadStatistics, 30000);
+
+        // Drag and drop functionality
+        const uploadDropzone = document.getElementById('uploadDropzone');
+        const fileInput = document.getElementById('file');
+        const uploadProgressContainer = document.getElementById('uploadProgressContainer');
+        const uploadProgressList = document.getElementById('uploadProgressList');
+
+        // Click to browse
+        uploadDropzone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Drag and drop handlers
+        uploadDropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadDropzone.classList.add('drag-over');
+        });
+
+        uploadDropzone.addEventListener('dragleave', () => {
+            uploadDropzone.classList.remove('drag-over');
+        });
+
+        uploadDropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadDropzone.classList.remove('drag-over');
+            
+            const files = Array.from(e.dataTransfer.files).filter(file => {
+                const ext = file.name.split('.').pop().toLowerCase();
+                return ext === 'xlsx' || ext === 'xls';
+            });
+            
+            if (files.length > 0) {
+                handleFiles(files);
+            } else {
+                showNotification('Please drop only Excel files (.xlsx or .xls)', 'error');
             }
         });
+
+        // File input change handler
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFiles(Array.from(e.target.files));
+            }
+        });
+
+        // Handle multiple files
+        async function handleFiles(files) {
+            uploadProgressContainer.style.display = 'block';
+            uploadProgressList.innerHTML = '';
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                await uploadFileWithProgress(file, i);
+            }
+        }
+
+        // Upload file with progress and validation
+        async function uploadFileWithProgress(file, index) {
+            const progressId = `progress_${index}_${Date.now()}`;
+            const progressItem = document.createElement('div');
+            progressItem.className = 'upload-progress-item';
+            progressItem.id = progressId;
+            progressItem.innerHTML = `
+                <div class="progress-file-name">${file.name}</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" style="width: 0%"></div>
+                </div>
+                <div class="progress-status">Validating...</div>
+            `;
+            uploadProgressList.appendChild(progressItem);
+            
+            const progressBar = progressItem.querySelector('.progress-bar');
+            const progressStatus = progressItem.querySelector('.progress-status');
+            
+            try {
+                // Step 1: Advanced validation
+                progressBar.style.width = '25%';
+                progressStatus.textContent = 'Validating file structure...';
+                
+                const validationFormData = new FormData();
+                validationFormData.append('file', file);
+                
+                const validationResponse = await fetch('/api/validate-file', {
+                    method: 'POST',
+                    body: validationFormData
+                });
+                
+                const validationData = await validationResponse.json();
+                
+                if (!validationData.success || !validationData.valid) {
+                    progressBar.style.width = '100%';
+                    progressBar.style.backgroundColor = 'var(--error)';
+                    progressStatus.textContent = `Validation failed: ${validationData.error}`;
+                    progressStatus.style.color = 'var(--error)';
+                    return;
+                }
+                
+                // Step 2: Upload file
+                progressBar.style.width = '50%';
+                progressStatus.textContent = 'Uploading file...';
+                
+                const uploadFormData = new FormData();
+                uploadFormData.append('file', file);
+                
+                const uploadResponse = await fetch('/upload', {
+                    method: 'POST',
+                    body: uploadFormData
+                });
+                
+                const uploadData = await uploadResponse.json();
+                
+                if (!uploadData.success) {
+                    progressBar.style.width = '100%';
+                    progressBar.style.backgroundColor = 'var(--error)';
+                    progressStatus.textContent = `Upload failed: ${uploadData.error}`;
+                    progressStatus.style.color = 'var(--error)';
+                    return;
+                }
+                
+                // Step 3: Apply suggested parameters
+                progressBar.style.width = '75%';
+                progressStatus.textContent = 'Applying suggested parameters...';
+                
+                if (validationData.suggested_parameters) {
+                    uploadData.column = validationData.suggested_parameters.column;
+                    uploadData.max_chars = validationData.suggested_parameters.max_chars;
+                    uploadData.suggested = true;
+                }
+                
+                // Step 4: Complete
+                progressBar.style.width = '100%';
+                progressBar.style.backgroundColor = 'var(--success)';
+                progressStatus.textContent = 'Upload complete!';
+                progressStatus.style.color = 'var(--success)';
+                
+                uploadedFiles.push(uploadData);
+                displayUploadedFiles();
+                
+                // Remove progress item after 2 seconds
+                setTimeout(() => {
+                    progressItem.remove();
+                    if (uploadProgressList.children.length === 0) {
+                        uploadProgressContainer.style.display = 'none';
+                    }
+                }, 2000);
+                
+                showNotification(`File "${file.name}" uploaded successfully${validationData.suggested_parameters ? ' with suggested parameters' : ''}`, 'success');
+                
+            } catch (error) {
+                progressBar.style.width = '100%';
+                progressBar.style.backgroundColor = 'var(--error)';
+                progressStatus.textContent = `Error: ${error.message}`;
+                progressStatus.style.color = 'var(--error)';
+                showNotification(`Error uploading ${file.name}: ${error.message}`, 'error');
+            }
+        }
+
+        // Old form handler removed - using drag and drop instead
 
         async function processFile(fileData) {
             const loadingOverlay = document.getElementById('loadingOverlay');
@@ -171,8 +404,12 @@
                 if (data.success) {
                     displayOutputFile(data.output_filename, data.processing_time);
                     showNotification('File processed successfully!', 'success');
+                    // Refresh statistics after successful processing
+                    loadStatistics();
                 } else {
                     showNotification(data.error || 'Processing failed', 'error');
+                    // Refresh statistics even on failure
+                    loadStatistics();
                 }
             } catch (error) {
                 showNotification('Error processing file: ' + error.message, 'error');
@@ -214,28 +451,29 @@
                 // Use stored values or defaults
                 const defaultColumn = file.column || '';
                 const defaultMaxChars = file.max_chars || '';
+                const suggestedBadge = file.suggested ? '<span class="suggested-badge" title="Parameters suggested by automatic analysis">✨ Suggested</span>' : '';
                 fileItem.innerHTML = `
                     <div class="file-item-top">
                         <div class="file-info">
                             <a href="/download/uploads/${file.uploaded_filename}" class="file-link" download>${file.filename}</a>
-                            <span class="file-meta">Uploaded: ${uploadTime}</span>
+                            <span class="file-meta">Uploaded: ${uploadTime} ${suggestedBadge}</span>
                         </div>
                         <div class="file-actions">
-                            <button class="btn btn-preview" onclick="previewFile('uploads', '${file.uploaded_filename}')">Preview</button>
-                            <button class="btn btn-process">Process</button>
+                            <button class="btn btn-preview" onclick="previewFile('uploads', '${file.uploaded_filename}')" title="Preview file contents">Preview</button>
+                            <button class="btn btn-process" title="Process file with current parameters">Process</button>
                         </div>
                     </div>
                     <div class="file-params">
                         <div class="param-group">
-                            <label for="column_${file.file_id}">Column:</label>
+                            <label for="column_${file.file_id}" title="Column letter containing the data to process (e.g., A, B, C)">Column:</label>
                             <input type="text" id="column_${file.file_id}" class="param-input" 
                                    placeholder="A, B, C..." pattern="[A-Za-z]+" maxlength="3" 
                                    value="${defaultColumn}" style="text-transform: uppercase;">
                         </div>
                         <div class="param-group">
-                            <label for="max_chars_${file.file_id}">Max Chars:</label>
+                            <label for="max_chars_${file.file_id}" title="Maximum number of characters allowed per cell (1-10000)">Max Chars:</label>
                             <input type="number" id="max_chars_${file.file_id}" class="param-input" 
-                                   placeholder="1000" min="1" value="${defaultMaxChars}">
+                                   placeholder="1000" min="1" max="10000" value="${defaultMaxChars}">
                         </div>
                     </div>
                 `;
@@ -449,6 +687,54 @@
             const modal = document.getElementById('previewModal');
             if (event.target === modal) {
                 closePreview();
+            }
+        }
+
+        // Help section functions
+        function toggleHelp() {
+            const helpContent = document.getElementById('helpContent');
+            const toggleBtn = document.querySelector('.btn-help-toggle');
+            if (helpContent.style.display === 'none') {
+                helpContent.style.display = 'block';
+                toggleBtn.textContent = '−';
+            } else {
+                helpContent.style.display = 'none';
+                toggleBtn.textContent = '+';
+            }
+        }
+
+        function showHelpTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.help-tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.help-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(`help${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function toggleFaq(element) {
+            const answer = element.nextElementSibling;
+            const toggle = element.querySelector('.faq-toggle');
+            
+            if (answer.style.display === 'block') {
+                answer.style.display = 'none';
+                toggle.textContent = '+';
+            } else {
+                // Close other open FAQs
+                document.querySelectorAll('.faq-answer').forEach(ans => {
+                    ans.style.display = 'none';
+                });
+                document.querySelectorAll('.faq-toggle').forEach(tog => {
+                    tog.textContent = '+';
+                });
+                
+                answer.style.display = 'block';
+                toggle.textContent = '−';
             }
         }
     </script>
