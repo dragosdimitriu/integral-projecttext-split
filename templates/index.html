@@ -1144,15 +1144,26 @@
                         
                         window.paginationHideInterval = setInterval(function() {
                             const pagEl = document.getElementById('previewPagination');
-                            if (pagEl && (pagEl.style.display === 'flex' || pagEl.style.display === 'block' || 
-                                window.getComputedStyle(pagEl).display === 'flex' || 
-                                window.getComputedStyle(pagEl).display === 'block')) {
-                                console.log('Periodic check: Forcing pagination hide');
-                                pagEl.style.display = 'none';
-                                pagEl.style.visibility = 'hidden';
-                                pagEl.innerHTML = '';
+                            if (pagEl) {
+                                const computedStyle = window.getComputedStyle(pagEl);
+                                const isVisible = computedStyle.display !== 'none' && 
+                                                computedStyle.visibility !== 'hidden' &&
+                                                (computedStyle.display === 'flex' || computedStyle.display === 'block');
+                                
+                                if (isVisible) {
+                                    console.log('Periodic check: Forcing pagination hide', {
+                                        display: computedStyle.display,
+                                        visibility: computedStyle.visibility
+                                    });
+                                    pagEl.style.setProperty('display', 'none', 'important');
+                                    pagEl.style.setProperty('visibility', 'hidden', 'important');
+                                    pagEl.style.setProperty('opacity', '0', 'important');
+                                    pagEl.style.setProperty('height', '0', 'important');
+                                    pagEl.innerHTML = '';
+                                    pagEl.setAttribute('data-output-file', 'true');
+                                }
                             }
-                        }, 100);
+                        }, 50); // Check every 50ms for faster response
                         
                         console.log('Pagination blocker installed (MutationObserver + setInterval)');
                     } else {

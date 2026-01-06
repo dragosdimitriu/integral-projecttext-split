@@ -730,9 +730,24 @@ footer a:hover {
 }
 
 /* Force hide pagination for output files using data attribute */
-.preview-pagination[data-output-file="true"] {
+.preview-pagination[data-output-file="true"],
+.preview-pagination[data-output-file="true"] * {
     display: none !important;
     visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Additional rule to catch any inline styles */
+#previewPagination[data-output-file="true"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 .btn-pagination {
