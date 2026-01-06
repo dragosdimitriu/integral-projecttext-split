@@ -968,18 +968,20 @@
                         rowsPerPage: previewDataStore.rowsPerPage
                     });
                     
-                    // For input files, load all data for search (in chunks to avoid memory issues)
-                    if (previewDataStore.isInputFile && data.total_rows <= 2000) {
-                        // Load all data for files up to 2000 rows
-                        await loadAllPreviewData(folder, filename, data.total_rows, data.total_pages);
-                    }
-                    
                     renderPreviewTable(data.data, data.start_row);
                     renderPagination();
                     updatePreviewInfo(data);
                     
-                    // Setup search if input file
-                    if (previewDataStore.isInputFile) {
+                    // For input files, load all data for search in background (in chunks to avoid memory issues)
+                    if (previewDataStore.isInputFile && data.total_rows <= 2000) {
+                        // Load all data for files up to 2000 rows (don't await - load in background)
+                        loadAllPreviewData(folder, filename, data.total_rows, data.total_pages).then(() => {
+                            console.log('All preview data loaded for search');
+                        }).catch(err => {
+                            console.error('Error loading all preview data:', err);
+                        });
+                        
+                        // Setup search if input file
                         setupPreviewSearch();
                     }
                 } else {
