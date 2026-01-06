@@ -1,8 +1,8 @@
 # Remote Development Setup Guide
 
-This guide explains how to connect to the production server for remote development using VS Code.
+This guide explains how to connect to the production server for remote development using Cursor (or VS Code).
 
-## Option 1: VS Code Remote SSH (Recommended)
+## Option 1: Cursor/VS Code Remote SSH (Recommended)
 
 ### Installation
 
@@ -38,7 +38,7 @@ This guide explains how to connect to the production server for remote developme
    - Press `F1` or `Ctrl+Shift+P`
    - Type "Remote-SSH: Connect to Host"
    - Select "pt.schrack.lastchance.ro"
-   - VS Code will open a new window connected to the server
+   - Cursor (or VS Code) will open a new window connected to the server
 
 2. **Open Project Folder**:
    - Once connected, click "Open Folder" or press `Ctrl+K Ctrl+O`
@@ -49,9 +49,10 @@ This guide explains how to connect to the production server for remote developme
 
 ✅ **Integrated Terminal**: Full terminal access to remote server  
 ✅ **File Explorer**: Browse and edit files directly  
+✅ **Cursor AI**: Works with remote files! (Cursor only)  
 ✅ **IntelliSense**: Code completion and syntax highlighting  
-✅ **Git Integration**: Use Git directly from VS Code  
-✅ **Extensions**: Install VS Code extensions on remote server  
+✅ **Git Integration**: Use Git directly from Cursor/VS Code  
+✅ **Extensions**: Install extensions on remote server  
 ✅ **Debugging**: Debug Python code remotely  
 
 ### Quick Commands
@@ -127,7 +128,7 @@ rsync -avz -e "ssh -p 2324 -i ~/.ssh/integral_projecttext_prod" \
   ./local-copy/
 ```
 
-## VS Code Remote SSH Tips
+## Cursor/VS Code Remote SSH Tips
 
 ### Install Python Extension on Remote
 
@@ -142,6 +143,13 @@ rsync -avz -e "ssh -p 2324 -i ~/.ssh/integral_projecttext_prod" \
 - **Pylance** (Python language server)
 - **GitLens** (Git integration)
 - **Remote - SSH** (already installed)
+
+### Cursor-Specific Features
+
+- **Cursor AI**: Works seamlessly with remote files
+- **AI Chat**: Can reference remote code in conversations
+- **Composer**: Can edit remote files using AI
+- All Cursor features work exactly like with local files!
 
 ### Terminal Setup
 
