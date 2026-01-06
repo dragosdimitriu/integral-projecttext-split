@@ -102,9 +102,12 @@ After=network.target
 User=lastchance
 Group=lastchance
 WorkingDirectory=/home/lastchance/ProjectTextApp
-Environment="PATH=/home/lastchance/ProjectTextApp/venv/bin"
+Environment="PATH=/home/lastchance/ProjectTextApp/venv/bin:/usr/bin:/bin"
 EnvironmentFile=/home/lastchance/ProjectTextApp/.env
 ExecStart=/home/lastchance/ProjectTextApp/venv/bin/gunicorn --config /home/lastchance/ProjectTextApp/gunicorn_config.py wsgi:app
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
 Restart=always
 RestartSec=10
 
