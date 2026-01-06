@@ -172,7 +172,13 @@
                 </div>
                 <div class="modal-body">
                     <div id="previewInfo" class="preview-info"></div>
+                    <div id="previewSearchContainer" style="display: none; margin-bottom: 15px;">
+                        <input type="text" id="previewSearchInput" class="preview-search-input" 
+                               placeholder="Căutare în date..." 
+                               style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem;">
+                    </div>
                     <div id="previewTable"></div>
+                    <div id="previewPagination" class="preview-pagination" style="display: none; margin-top: 20px; display: flex; justify-content: center; align-items: center; gap: 10px;"></div>
                 </div>
             </div>
         </div>
@@ -628,105 +634,339 @@
             }, timeout);
         }
 
+        // Store preview data for search functionality
+        let previewDataStore = {
+            allData: [],
+            filteredData: [],
+            currentPage: 1,
+            totalPages: 1,
+            rowsPerPage: 50,
+            totalRows: 0,
+            previewColumns: 0,
+            totalColumns: 0,
+            sheetName: '',
+            filename: '',
+            folder: '',
+            isInputFile: false
+        };
+
+        // Helper function to convert column index to letter
+        function getColumnLetter(index) {
+            let result = '';
+            index++; // Convert to 1-based
+            while (index > 0) {
+                index--;
+                result = String.fromCharCode(65 + (index % 26)) + result;
+                index = Math.floor(index / 26);
+            }
+            return result;
+        }
+
+        // Render preview table
+        function renderPreviewTable(data, startRow = 1) {
+            const table = document.getElementById('previewTable');
+            if (!data || data.length === 0) {
+                table.innerHTML = '<div class="preview-empty">Nu există date de previzualizat</div>';
+                return;
+            }
+
+            let tableHTML = '<div class="preview-table-container"><table class="preview-table"><thead><tr>';
+            // Header row
+            for (let i = 0; i < previewDataStore.previewColumns; i++) {
+                tableHTML += `<th>${getColumnLetter(i)}</th>`;
+            }
+            tableHTML += '</tr></thead><tbody>';
+            
+            // Data rows
+            data.forEach((row, rowIdx) => {
+                const actualRowNum = startRow + rowIdx;
+                tableHTML += `<tr data-row="${actualRowNum}">`;
+                for (let i = 0; i < previewDataStore.previewColumns; i++) {
+                    const cellValue = row[i] || '';
+                    tableHTML += `<td title="${cellValue}">${cellValue}</td>`;
+                }
+                tableHTML += '</tr>';
+            });
+            
+            tableHTML += '</tbody></table></div>';
+            table.innerHTML = tableHTML;
+        }
+
+        // Render pagination controls
+        function renderPagination() {
+            const pagination = document.getElementById('previewPagination');
+            if (previewDataStore.totalPages <= 1) {
+                pagination.style.display = 'none';
+                return;
+            }
+
+            pagination.style.display = 'flex';
+            let paginationHTML = '';
+            
+            // Previous button
+            paginationHTML += `<button class="btn-pagination" onclick="changePreviewPage(${previewDataStore.currentPage - 1})" 
+                ${previewDataStore.currentPage === 1 ? 'disabled' : ''}>‹ Anterior</button>`;
+            
+            // Page numbers
+            const maxPagesToShow = 7;
+            let startPage = Math.max(1, previewDataStore.currentPage - Math.floor(maxPagesToShow / 2));
+            let endPage = Math.min(previewDataStore.totalPages, startPage + maxPagesToShow - 1);
+            
+            if (startPage > 1) {
+                paginationHTML += `<button class="btn-pagination" onclick="changePreviewPage(1)">1</button>`;
+                if (startPage > 2) {
+                    paginationHTML += `<span>...</span>`;
+                }
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                paginationHTML += `<button class="btn-pagination ${i === previewDataStore.currentPage ? 'active' : ''}" 
+                    onclick="changePreviewPage(${i})">${i}</button>`;
+            }
+            
+            if (endPage < previewDataStore.totalPages) {
+                if (endPage < previewDataStore.totalPages - 1) {
+                    paginationHTML += `<span>...</span>`;
+                }
+                paginationHTML += `<button class="btn-pagination" onclick="changePreviewPage(${previewDataStore.totalPages})">${previewDataStore.totalPages}</button>`;
+            }
+            
+            // Next button
+            paginationHTML += `<button class="btn-pagination" onclick="changePreviewPage(${previewDataStore.currentPage + 1})" 
+                ${previewDataStore.currentPage === previewDataStore.totalPages ? 'disabled' : ''}>Următor ›</button>`;
+            
+            pagination.innerHTML = paginationHTML;
+        }
+
+        // Change preview page
+        window.changePreviewPage = function(page) {
+            if (page < 1 || page > previewDataStore.totalPages) return;
+            
+            previewDataStore.currentPage = page;
+            loadPreviewPage();
+        };
+
+        // Load preview page (from server or filtered data)
+        async function loadPreviewPage() {
+            const table = document.getElementById('previewTable');
+            table.innerHTML = '<div class="loading">Se încarcă...</div>';
+            
+            // If search is active, use filtered data
+            const searchInput = document.getElementById('previewSearchInput');
+            const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
+            
+            if (searchTerm && previewDataStore.isInputFile && previewDataStore.filteredData.length > 0) {
+                // Use filtered data for pagination
+                const startIdx = (previewDataStore.currentPage - 1) * previewDataStore.rowsPerPage;
+                const endIdx = startIdx + previewDataStore.rowsPerPage;
+                const pageData = previewDataStore.filteredData.slice(startIdx, endIdx);
+                renderPreviewTable(pageData, startIdx + 1);
+                renderPagination();
+                updatePreviewInfo();
+                return;
+            }
+            
+            // Load from server
+            try {
+                const response = await fetch(`/preview/${previewDataStore.folder}/${previewDataStore.filename}?page=${previewDataStore.currentPage}`);
+                
+                if (!response.ok) {
+                    let errorText = await response.text();
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        throw new Error(errorData.error || 'Eroare necunoscută');
+                    } catch (parseError) {
+                        throw new Error(`Eroare server: ${response.status} ${response.statusText}`);
+                    }
+                }
+                
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Serverul a returnat un răspuns neașteptat.');
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    previewDataStore.currentPage = data.current_page;
+                    previewDataStore.totalPages = data.total_pages;
+                    previewDataStore.totalRows = data.total_rows;
+                    
+                    renderPreviewTable(data.data, data.start_row);
+                    renderPagination();
+                    updatePreviewInfo(data);
+                } else {
+                    throw new Error(data.error || 'Eșec la încărcarea previzualizării');
+                }
+            } catch (error) {
+                table.innerHTML = `<div class="preview-error">Eroare: ${error.message}</div>`;
+            }
+        }
+
+        // Update preview info
+        function updatePreviewInfo(data = null) {
+            const info = document.getElementById('previewInfo');
+            const searchInput = document.getElementById('previewSearchInput');
+            const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
+            
+            let totalRows = previewDataStore.totalRows;
+            let totalPages = previewDataStore.totalPages;
+            
+            if (searchTerm && previewDataStore.isInputFile) {
+                totalRows = previewDataStore.filteredData.length;
+                totalPages = Math.ceil(totalRows / previewDataStore.rowsPerPage);
+            }
+            
+            let previewInfo = `
+                <div class="preview-meta">
+                    <span><strong>Foaie:</strong> ${previewDataStore.sheetName}</span>
+                    <span><strong>Total Rânduri:</strong> ${totalRows}</span>
+                    <span><strong>Total Coloane:</strong> ${previewDataStore.totalColumns}</span>
+                    <span><strong>Pagina:</strong> ${previewDataStore.currentPage} / ${totalPages}</span>
+            `;
+            
+            if (previewDataStore.has_more_columns) {
+                previewInfo += `<span><strong>Coloane afișate:</strong> ${previewDataStore.previewColumns} (din ${previewDataStore.totalColumns} total)</span>`;
+            }
+            
+            if (searchTerm && previewDataStore.isInputFile) {
+                previewInfo += `<span style="color: var(--primary-color); font-weight: 600;">🔍 Căutare activă: "${searchInput.value}" (${totalRows} rezultate)</span>`;
+            }
+            
+            previewInfo += `</div>`;
+            info.innerHTML = previewInfo;
+        }
+
+        // Search functionality (only for input files)
+        function setupPreviewSearch() {
+            const searchInput = document.getElementById('previewSearchInput');
+            if (!searchInput) return;
+            
+            let searchTimeout;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    if (!previewDataStore.isInputFile) return;
+                    
+                    const searchTerm = this.value.trim().toLowerCase();
+                    
+                    if (searchTerm === '') {
+                        // Reset to original data
+                        previewDataStore.filteredData = [];
+                        previewDataStore.currentPage = 1;
+                        loadPreviewPage();
+                        return;
+                    }
+                    
+                    // Filter data client-side
+                    previewDataStore.filteredData = previewDataStore.allData.filter(row => {
+                        return row.some(cell => {
+                            const cellStr = String(cell || '').toLowerCase();
+                            return cellStr.includes(searchTerm);
+                        });
+                    });
+                    
+                    // Reset to page 1 and recalculate pages
+                    previewDataStore.currentPage = 1;
+                    previewDataStore.totalPages = Math.ceil(previewDataStore.filteredData.length / previewDataStore.rowsPerPage);
+                    
+                    // Render filtered results
+                    const startIdx = 0;
+                    const endIdx = previewDataStore.rowsPerPage;
+                    const pageData = previewDataStore.filteredData.slice(startIdx, endIdx);
+                    renderPreviewTable(pageData, 1);
+                    renderPagination();
+                    updatePreviewInfo();
+                }, 300); // Debounce 300ms
+            });
+        }
+
         async function previewFile(folder, filename) {
             const modal = document.getElementById('previewModal');
             const title = document.getElementById('previewTitle');
             const info = document.getElementById('previewInfo');
             const table = document.getElementById('previewTable');
+            const searchContainer = document.getElementById('previewSearchContainer');
+            const searchInput = document.getElementById('previewSearchInput');
+            const pagination = document.getElementById('previewPagination');
+            
+            // Reset state
+            previewDataStore = {
+                allData: [],
+                filteredData: [],
+                currentPage: 1,
+                totalPages: 1,
+                rowsPerPage: 50,
+                totalRows: 0,
+                previewColumns: 0,
+                totalColumns: 0,
+                sheetName: '',
+                filename: filename,
+                folder: folder,
+                isInputFile: folder === 'uploads'
+            };
+            
+            // Show/hide search based on file type
+            if (previewDataStore.isInputFile) {
+                searchContainer.style.display = 'block';
+                if (searchInput) searchInput.value = '';
+            } else {
+                searchContainer.style.display = 'none';
+            }
             
             // Show modal with loading state
             modal.style.display = 'flex';
             title.textContent = 'Se încarcă previzualizarea...';
             info.innerHTML = '';
             table.innerHTML = '<div class="loading">Se încarcă previzualizarea fișierului...</div>';
+            pagination.style.display = 'none';
             
             try {
-                const response = await fetch(`/preview/${folder}/${filename}`);
+                // Load first page
+                const response = await fetch(`/preview/${folder}/${filename}?page=1`);
                 
-                // Check if response is OK and is JSON
                 if (!response.ok) {
-                    // Try to get error message from response
                     let errorText = await response.text();
                     try {
                         const errorData = JSON.parse(errorText);
                         throw new Error(errorData.error || 'Eroare necunoscută');
                     } catch (parseError) {
-                        // Response is not JSON, might be HTML error page
                         throw new Error(`Eroare server: ${response.status} ${response.statusText}`);
                     }
                 }
                 
-                // Check content type to ensure it's JSON
                 const contentType = response.headers.get('content-type');
                 if (!contentType || !contentType.includes('application/json')) {
-                    throw new Error('Serverul a returnat un răspuns neașteptat. Fișierul poate fi prea mare.');
+                    throw new Error('Serverul a returnat un răspuns neașteptat.');
                 }
                 
                 const data = await response.json();
                 
                 if (data.success) {
                     title.textContent = `Previzualizare: ${data.filename}`;
-                    // Build preview info with pagination notice if needed
-                    let previewInfo = `
-                        <div class="preview-meta">
-                            <span><strong>Foaie:</strong> ${data.sheet_name}</span>
-                            <span><strong>Total Rânduri:</strong> ${data.total_rows}</span>
-                            <span><strong>Total Coloane:</strong> ${data.total_columns}</span>
-                            <span><strong>Previzualizare:</strong> Primele ${data.preview_rows} rânduri`;
                     
-                    if (data.has_more_rows) {
-                        previewInfo += ` (din ${data.total_rows} total)`;
-                    }
-                    if (data.has_more_columns) {
-                        previewInfo += `, primele ${data.preview_columns} coloane (din ${data.total_columns} total)`;
-                    } else {
-                        previewInfo += `, ${data.preview_columns} coloane`;
-                    }
-                    previewInfo += `</span>`;
+                    // Store preview data
+                    previewDataStore.sheetName = data.sheet_name;
+                    previewDataStore.totalRows = data.total_rows;
+                    previewDataStore.totalColumns = data.total_columns;
+                    previewDataStore.previewColumns = data.preview_columns;
+                    previewDataStore.has_more_columns = data.has_more_columns;
+                    previewDataStore.currentPage = data.current_page;
+                    previewDataStore.totalPages = data.total_pages;
                     
-                    if (data.has_more_rows || data.has_more_columns) {
-                        previewInfo += `<span style="color: var(--primary-color); font-weight: 600; margin-top: 8px; display: block;">
-                            ⚠️ Fișier mare: Se afișează doar primele ${data.preview_rows} rânduri. Descărcați fișierul pentru a vedea toate datele.
-                        </span>`;
-                    }
-                    previewInfo += `</div>`;
-                    info.innerHTML = previewInfo;
-                    
-                    // Helper function to convert column index to letter (A, B, ..., Z, AA, AB, ...)
-                    function getColumnLetter(index) {
-                        let result = '';
-                        index++; // Convert to 1-based
-                        while (index > 0) {
-                            index--;
-                            result = String.fromCharCode(65 + (index % 26)) + result;
-                            index = Math.floor(index / 26);
-                        }
-                        return result;
+                    // For input files, load all data for search (in chunks to avoid memory issues)
+                    if (previewDataStore.isInputFile && data.total_rows <= 2000) {
+                        // Load all data for files up to 2000 rows
+                        await loadAllPreviewData(folder, filename, data.total_rows, data.total_pages);
                     }
                     
-                    // Create preview table
-                    if (data.data && data.data.length > 0) {
-                        let tableHTML = '<div class="preview-table-container"><table class="preview-table"><thead><tr>';
-                        // Header row - use preview_columns, not total_columns
-                        for (let i = 0; i < data.preview_columns; i++) {
-                            tableHTML += `<th>${getColumnLetter(i)}</th>`;
-                        }
-                        tableHTML += '</tr></thead><tbody>';
-                        
-                        // Data rows - show preview rows
-                        data.data.forEach((row, rowIdx) => {
-                            tableHTML += '<tr>';
-                            for (let i = 0; i < data.preview_columns; i++) {
-                                const cellValue = row[i] || '';
-                                tableHTML += `<td title="${cellValue}">${cellValue}</td>`;
-                            }
-                            tableHTML += '</tr>';
-                        });
-                        
-                        tableHTML += '</tbody></table></div>';
-                        table.innerHTML = tableHTML;
-                    } else {
-                        table.innerHTML = '<div class="preview-empty">Nu există date de previzualizat</div>';
+                    renderPreviewTable(data.data, data.start_row);
+                    renderPagination();
+                    updatePreviewInfo(data);
+                    
+                    // Setup search if input file
+                    if (previewDataStore.isInputFile) {
+                        setupPreviewSearch();
                     }
                 } else {
                     title.textContent = 'Eroare Previzualizare';
@@ -736,12 +976,31 @@
             } catch (error) {
                 title.textContent = 'Eroare Previzualizare';
                 info.innerHTML = '';
-                // Check if error is due to HTML response instead of JSON
                 let errorMsg = error.message;
                 if (errorMsg.includes("Unexpected token") || errorMsg.includes("JSON")) {
-                    errorMsg = 'Fișierul este prea mare sau serverul nu a putut procesa cererea. Vă rugăm să descărcați fișierul pentru a-l vedea complet.';
+                    errorMsg = 'Fișierul este prea mare sau serverul nu a putut procesa cererea.';
                 }
                 table.innerHTML = `<div class="preview-error">Eroare la încărcarea previzualizării: ${errorMsg}</div>`;
+            }
+        }
+
+        // Load all preview data for search (only for input files with reasonable size)
+        async function loadAllPreviewData(folder, filename, totalRows, totalPages) {
+            try {
+                const allDataPromises = [];
+                for (let page = 1; page <= Math.min(totalPages, 40); page++) { // Limit to 40 pages (2000 rows)
+                    allDataPromises.push(
+                        fetch(`/preview/${folder}/${filename}?page=${page}`)
+                            .then(r => r.json())
+                            .then(d => d.data || [])
+                    );
+                }
+                
+                const allPagesData = await Promise.all(allDataPromises);
+                previewDataStore.allData = allPagesData.flat();
+            } catch (error) {
+                console.error('Error loading all preview data:', error);
+                // Continue without search if loading fails
             }
         }
 

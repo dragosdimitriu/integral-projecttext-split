@@ -703,6 +703,67 @@ footer a:hover {
     color: var(--error);
 }
 
+/* Preview Search */
+.preview-search-input {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: border-color 0.3s ease;
+}
+
+.preview-search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(74, 71, 138, 0.1);
+}
+
+/* Preview Pagination */
+.preview-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.btn-pagination {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    min-width: 40px;
+}
+
+.btn-pagination:hover:not(:disabled) {
+    background: var(--primary-color);
+    color: var(--white);
+    border-color: var(--primary-color);
+}
+
+.btn-pagination.active {
+    background: var(--primary-color);
+    color: var(--white);
+    border-color: var(--primary-color);
+    font-weight: 600;
+}
+
+.btn-pagination:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.preview-pagination span {
+    padding: 0 4px;
+    color: var(--text-secondary);
+}
+
 /* Statistics Dashboard */
 .statistics-section {
     padding: 30px;

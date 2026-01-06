@@ -932,9 +932,13 @@ def validate_file_advanced():
 @app.route('/preview/<folder>/<filename>')
 @login_required
 def preview_file(folder, filename):
-    """Preview Excel file - return first 500 rows as JSON (optimized for large files)"""
+    """Preview Excel file with pagination - 50 rows per page"""
     if folder not in ['uploads', 'outputs']:
         return jsonify({'success': False, 'error': 'Invalid folder'}), 400
+    
+    # Get pagination parameters
+    page = request.args.get('page', 1, type=int)
+    rows_per_page = 50
     
     # Sanitize filename to prevent path traversal
     filename = sanitize_filename(filename)
@@ -958,19 +962,24 @@ def preview_file(folder, filename):
         total_rows = sheet.max_row
         total_cols = sheet.max_column
         
-        # Limit preview to first 500 rows to prevent timeout and memory issues
-        # For files with thousands of rows, showing all at once is not practical
-        PREVIEW_ROW_LIMIT = 500
-        preview_row_count = min(PREVIEW_ROW_LIMIT, total_rows)
-        preview_col_count = min(50, total_cols)  # Limit columns too for very wide files
+        # Limit columns for very wide files
+        preview_col_count = min(50, total_cols)
         
-        # Get preview data efficiently
+        # Calculate pagination
+        total_pages = (total_rows + rows_per_page - 1) // rows_per_page  # Ceiling division
+        page = max(1, min(page, total_pages))  # Clamp page between 1 and total_pages
+        
+        # Calculate row range for this page
+        start_row = (page - 1) * rows_per_page + 1
+        end_row = min(start_row + rows_per_page - 1, total_rows)
+        
+        # Get preview data for current page
         preview_data = []
         
         # Use iter_rows for better memory efficiency
-        for row_idx, row in enumerate(sheet.iter_rows(min_row=1, max_row=preview_row_count, 
-                                                      min_col=1, max_col=preview_col_count, 
-                                                      values_only=True), start=1):
+        for row in sheet.iter_rows(min_row=start_row, max_row=end_row, 
+                                   min_col=1, max_col=preview_col_count, 
+                                   values_only=True):
             row_data = []
             for cell_value in row:
                 # Get cell value, limit string length for preview
@@ -978,15 +987,15 @@ def preview_file(folder, filename):
                     row_data.append('')
                 elif isinstance(cell_value, str):
                     # Limit string length to prevent huge JSON responses
-                    if len(cell_value) > 100:
-                        row_data.append(cell_value[:100] + '...')
+                    if len(cell_value) > 200:
+                        row_data.append(cell_value[:200] + '...')
                     else:
                         row_data.append(cell_value)
                 else:
                     # Convert other types to string
                     str_value = str(cell_value)
-                    if len(str_value) > 100:
-                        row_data.append(str_value[:100] + '...')
+                    if len(str_value) > 200:
+                        row_data.append(str_value[:200] + '...')
                     else:
                         row_data.append(str_value)
             preview_data.append(row_data)
@@ -999,10 +1008,13 @@ def preview_file(folder, filename):
             'sheet_name': sheet.title,
             'total_rows': total_rows,
             'total_columns': total_cols,
-            'preview_rows': preview_row_count,
             'preview_columns': preview_col_count,
-            'has_more_rows': total_rows > PREVIEW_ROW_LIMIT,
             'has_more_columns': total_cols > 50,
+            'current_page': page,
+            'total_pages': total_pages,
+            'rows_per_page': rows_per_page,
+            'start_row': start_row,
+            'end_row': end_row,
             'data': preview_data
         })
     except MemoryError:
