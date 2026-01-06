@@ -49,8 +49,8 @@ sudo ufw enable
 ### Clone repository:
 ```bash
 cd /home/lastchance
-git clone https://github.com/dragosdimitriu/integral-projecttext-split.git app
-cd app
+git clone https://github.com/dragosdimitriu/integral-projecttext-split.git ProjectTextApp
+cd ProjectTextApp
 git checkout authentication
 ```
 
@@ -91,7 +91,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 ### Create Gunicorn config:
 ```bash
-nano /home/lastchance/app/gunicorn_config.py
+nano /home/lastchance/ProjectTextApp/gunicorn_config.py
 ```
 
 Add:
@@ -123,10 +123,10 @@ After=network.target
 [Service]
 User=lastchance
 Group=lastchance
-WorkingDirectory=/home/lastchance/app
-Environment="PATH=/home/lastchance/app/venv/bin"
-EnvironmentFile=/home/lastchance/app/.env
-ExecStart=/home/lastchance/app/venv/bin/gunicorn --config /home/lastchance/app/gunicorn_config.py wsgi:app
+WorkingDirectory=/home/lastchance/ProjectTextApp
+Environment="PATH=/home/lastchance/ProjectTextApp/venv/bin"
+EnvironmentFile=/home/lastchance/ProjectTextApp/.env
+ExecStart=/home/lastchance/ProjectTextApp/venv/bin/gunicorn --config /home/lastchance/ProjectTextApp/gunicorn_config.py wsgi:app
 Restart=always
 RestartSec=10
 
@@ -167,7 +167,7 @@ server {
     }
 
     location /static {
-        alias /home/lastchance/app/static;
+        alias /home/lastchance/ProjectTextApp/static;
         expires 30d;
         add_header Cache-Control "public, immutable";
     }
@@ -232,7 +232,7 @@ sudo journalctl -u integral-projecttext -n 50
 
 ### Permission issues:
 ```bash
-sudo chown -R lastchance:lastchance /home/lastchance/app
+sudo chown -R lastchance:lastchance /home/lastchance/ProjectTextApp
 ```
 
 ### Port already in use:

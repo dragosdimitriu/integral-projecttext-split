@@ -33,11 +33,11 @@ su - lastchance << 'EOF'
 cd /home/lastchance
 
 # Clone repository
-if [ ! -d "app" ]; then
-    git clone https://github.com/dragosdimitriu/integral-projecttext-split.git app
+if [ ! -d "ProjectTextApp" ]; then
+    git clone https://github.com/dragosdimitriu/integral-projecttext-split.git ProjectTextApp
 fi
 
-cd app
+cd ProjectTextApp
 git fetch origin
 git checkout authentication
 
@@ -71,7 +71,7 @@ EOF
 
 # Create Gunicorn config
 echo "Creating Gunicorn configuration..."
-cat > /home/lastchance/app/gunicorn_config.py << 'GUNICORNEOF'
+cat > /home/lastchance/ProjectTextApp/gunicorn_config.py << 'GUNICORNEOF'
 bind = "127.0.0.1:5000"
 workers = 4
 worker_class = "sync"
@@ -83,7 +83,7 @@ max_requests_jitter = 100
 preload_app = True
 GUNICORNEOF
 
-chown lastchance:lastchance /home/lastchance/app/gunicorn_config.py
+chown lastchance:lastchance /home/lastchance/ProjectTextApp/gunicorn_config.py
 
 # Create systemd service
 echo "Creating systemd service..."
@@ -95,10 +95,10 @@ After=network.target
 [Service]
 User=lastchance
 Group=lastchance
-WorkingDirectory=/home/lastchance/app
-Environment="PATH=/home/lastchance/app/venv/bin"
-EnvironmentFile=/home/lastchance/app/.env
-ExecStart=/home/lastchance/app/venv/bin/gunicorn --config /home/lastchance/app/gunicorn_config.py wsgi:app
+WorkingDirectory=/home/lastchance/ProjectTextApp
+Environment="PATH=/home/lastchance/ProjectTextApp/venv/bin"
+EnvironmentFile=/home/lastchance/ProjectTextApp/.env
+ExecStart=/home/lastchance/ProjectTextApp/venv/bin/gunicorn --config /home/lastchance/ProjectTextApp/gunicorn_config.py wsgi:app
 Restart=always
 RestartSec=10
 
@@ -125,7 +125,7 @@ server {
     }
 
     location /static {
-        alias /home/lastchance/app/static;
+        alias /home/lastchance/ProjectTextApp/static;
         expires 30d;
         add_header Cache-Control "public, immutable";
     }
@@ -137,7 +137,7 @@ ln -sf /etc/nginx/sites-available/integral-projecttext /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 
 # Set permissions
-chown -R lastchance:lastchance /home/lastchance/app
+chown -R lastchance:lastchance /home/lastchance/ProjectTextApp
 
 # Reload systemd and start services
 echo "Starting services..."
@@ -150,7 +150,7 @@ echo ""
 echo "=== Setup Complete ==="
 echo ""
 echo "Next steps:"
-echo "1. Edit /home/lastchance/app/.env and add your Google OAuth credentials"
+echo "1. Edit /home/lastchance/ProjectTextApp/.env and add your Google OAuth credentials"
 echo "2. Restart the service: sudo systemctl restart integral-projecttext"
 echo "3. Set up SSL: sudo certbot --nginx -d pt.schrack.lastchance.ro"
 echo "4. Update Google OAuth redirect URI to: https://pt.schrack.lastchance.ro/callback"

@@ -22,7 +22,7 @@ sudo ./setup_production.sh
 
 ### 3. Configure Environment
 ```bash
-cd /home/lastchance/app
+cd /home/lastchance/ProjectTextApp
 nano .env
 # Add your GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
 sudo systemctl restart integral-projecttext
@@ -45,7 +45,7 @@ Visit: https://pt.schrack.lastchance.ro
 - **Domain**: pt.schrack.lastchance.ro
 - **SSH Port**: 2324
 - **User**: lastchance
-- **App Path**: /home/lastchance/app
+- **App Path**: /home/lastchance/ProjectTextApp
 
 ## 🔧 Common Commands
 ```bash
@@ -59,7 +59,7 @@ sudo journalctl -u integral-projecttext -f
 sudo systemctl restart integral-projecttext
 
 # Update code
-cd /home/lastchance/app
+cd /home/lastchance/ProjectTextApp
 git pull origin authentication
 sudo systemctl restart integral-projecttext
 ```
