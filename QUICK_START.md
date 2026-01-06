@@ -91,9 +91,10 @@ sudo journalctl -u integral-projecttext -f
 # Restart
 sudo systemctl restart integral-projecttext
 
-# Update code
+# Update code (from main branch)
 cd /home/lastchance/ProjectTextApp
-git pull origin authentication
+git checkout main
+git pull origin main
 sudo systemctl restart integral-projecttext
 ```
 
