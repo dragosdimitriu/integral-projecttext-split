@@ -263,14 +263,21 @@ input[type="file"] {
 
 .file-item {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
     padding: 16px;
     background: var(--background);
     border: 2px solid var(--border);
     border-radius: 8px;
     margin-bottom: 12px;
     transition: all 0.3s ease;
+    gap: 12px;
+}
+
+.file-item-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
 }
 
 .file-item:hover {
@@ -408,6 +415,50 @@ footer a {
 footer a:hover {
     opacity: 0.8;
     text-decoration: underline;
+}
+
+/* File Parameters */
+.file-params {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    margin: 10px 0;
+    padding: 10px;
+    background: var(--background);
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+
+.param-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.param-group label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.param-input {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    width: 120px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.param-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(74, 71, 138, 0.1);
+}
+
+.param-input[type="number"] {
+    width: 100px;
 }
 
 /* File Actions */

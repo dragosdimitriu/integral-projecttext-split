@@ -215,9 +215,15 @@
                 const defaultColumn = file.column || '';
                 const defaultMaxChars = file.max_chars || '';
                 fileItem.innerHTML = `
-                    <div class="file-info">
-                        <a href="/download/uploads/${file.uploaded_filename}" class="file-link" download>${file.filename}</a>
-                        <span class="file-meta">Uploaded: ${uploadTime}</span>
+                    <div class="file-item-top">
+                        <div class="file-info">
+                            <a href="/download/uploads/${file.uploaded_filename}" class="file-link" download>${file.filename}</a>
+                            <span class="file-meta">Uploaded: ${uploadTime}</span>
+                        </div>
+                        <div class="file-actions">
+                            <button class="btn btn-preview" onclick="previewFile('uploads', '${file.uploaded_filename}')">Preview</button>
+                            <button class="btn btn-process">Process</button>
+                        </div>
                     </div>
                     <div class="file-params">
                         <div class="param-group">
@@ -231,10 +237,6 @@
                             <input type="number" id="max_chars_${file.file_id}" class="param-input" 
                                    placeholder="1000" min="1" value="${defaultMaxChars}">
                         </div>
-                    </div>
-                    <div class="file-actions">
-                        <button class="btn btn-preview" onclick="previewFile('uploads', '${file.uploaded_filename}')">Preview</button>
-                        <button class="btn btn-process">Process</button>
                     </div>
                 `;
                 // Attach event listener properly
