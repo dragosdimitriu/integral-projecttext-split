@@ -721,12 +721,18 @@ footer a:hover {
 
 /* Preview Pagination */
 .preview-pagination {
-    display: none; /* Hidden by default, shown via JavaScript for input files only */
+    display: none !important; /* Hidden by default, shown via JavaScript for input files only */
     justify-content: center;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
     margin-top: 20px;
+}
+
+/* Force hide pagination for output files using data attribute */
+.preview-pagination[data-output-file="true"] {
+    display: none !important;
+    visibility: hidden !important;
 }
 
 .btn-pagination {

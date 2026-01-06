@@ -976,6 +976,10 @@
             // For output files, hide pagination immediately
             if (previewDataStore.isOutputFile) {
                 pagination.style.display = 'none';
+                pagination.style.visibility = 'hidden';
+                pagination.setAttribute('data-output-file', 'true');
+            } else {
+                pagination.removeAttribute('data-output-file');
             }
             
             try {
