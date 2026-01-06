@@ -700,9 +700,14 @@
                 return;
             }
             
-            // Hide pagination for output files (only show first 50 rows)
-            if (previewDataStore.isOutputFile) {
+            // Multiple checks to hide pagination for output files
+            if (previewDataStore.isOutputFile || 
+                pagination.getAttribute('data-output-file') === 'true' ||
+                previewDataStore.folder === 'outputs') {
                 pagination.style.display = 'none';
+                pagination.innerHTML = '';
+                pagination.setAttribute('data-output-file', 'true');
+                console.log('Pagination hidden for output file');
                 return;
             }
             
@@ -712,6 +717,13 @@
                 return;
             }
 
+            // Double check - never show pagination for output files
+            if (previewDataStore.isOutputFile) {
+                pagination.style.display = 'none';
+                pagination.innerHTML = '';
+                return;
+            }
+            
             pagination.style.display = 'flex';
             let paginationHTML = '';
             
