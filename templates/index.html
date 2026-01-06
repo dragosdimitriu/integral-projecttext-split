@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integral ProjectText FileProcessor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-container">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" 
+                     onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/logo.svg') }}';" 
+                     alt="SCHRACK SECONET Logo" class="logo-main">
+            </div>
+            <div class="header-content">
+                <div class="icon-wrapper">
+                    <img src="{{ url_for('static', filename='images/icon.png') }}" 
+                         onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/icon.svg') }}';" 
+                         alt="Icon" class="logo-icon">
+                </div>
+                <div class="header-text">
+                    <h1>Integral ProjectText FileProcessor</h1>
+                    <p class="subtitle">Process Excel files by splitting long text cells</p>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <section class="upload-section">
+                <h2>Upload File</h2>
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="file">Select Excel File (.xlsx or .xls)</label>
+                        <input type="file" id="file" name="file" accept=".xlsx,.xls" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="column">Column Name (e.g., A, B, C)</label>
+                        <input type="text" id="column" name="column" placeholder="Enter column letter" required pattern="[A-Za-z]+" maxlength="3">
+                    </div>
+                    <div class="form-group">
+                        <label for="max_chars">Maximum Characters per Cell</label>
+                        <input type="number" id="max_chars" name="max_chars" placeholder="Enter max characters" required min="1">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Upload File</button>
+                </form>
+            </section>
+
+            <section class="files-section" id="uploadedFilesSection" style="display: none;">
+                <h2>Uploaded Files</h2>
+                <div id="uploadedFilesList"></div>
+                <button id="showMoreUploaded" class="btn btn-show-more" style="display: none;" onclick="toggleUploadedFiles()">Show More</button>
+            </section>
+
+            <section class="files-section" id="outputFilesSection" style="display: none;">
+                <h2>Generated Output</h2>
+                <div id="outputFilesList"></div>
+                <button id="showMoreOutput" class="btn btn-show-more" style="display: none;" onclick="toggleOutputFiles()">Show More</button>
+            </section>
+        </main>
+
+        <footer>
+            <p>Developed by <a href="https://lastchance.ro" target="_blank" rel="noopener noreferrer">LCH team</a></p>
+        </footer>
+
+        <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p>Processing file... This may take 5-10 seconds</p>
+        </div>
+
+        <div id="notification" class="notification"></div>
+    </div>
+
+    <script>
+        let uploadedFiles = [];
+        let outputFiles = [];
+        let showAllUploaded = false;
+        let showAllOutput = false;
+        const FILES_PER_PAGE = 3;
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffSec = Math.floor(diffMs / 1000);
+            const diffMin = Math.floor(diffSec / 60);
+            const diffHour = Math.floor(diffMin / 60);
+            
+            if (diffSec < 60) {
+                return 'just now';
+            } else if (diffMin < 60) {
+                return `${diffMin} minute${diffMin > 1 ? 's' : ''} ago`;
+            } else if (diffHour < 24) {
+                return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
+            } else {
+                return date.toLocaleString();
+            }
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const fileInput = document.getElementById('file');
+            
+            if (!fileInput.files[0]) {
+                showNotification('Please select a file', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    uploadedFiles.push(data);
+                    displayUploadedFiles();
+                    showNotification('File uploaded successfully', 'success');
+                    e.target.reset();
+                } else {
+                    showNotification(data.error || 'Upload failed', 'error');
+                }
+            } catch (error) {
+                showNotification('Error uploading file: ' + error.message, 'error');
+            }
+        });
+
+        async function processFile(fileData) {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            loadingOverlay.style.display = 'flex';
+
+            try {
+                const response = await fetch('/process', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        uploaded_filename: fileData.uploaded_filename,
+                        column: fileData.column,
+                        max_chars: fileData.max_chars
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayOutputFile(data.output_filename, data.processing_time);
+                    showNotification('File processed successfully!', 'success');
+                } else {
+                    showNotification(data.error || 'Processing failed', 'error');
+                }
+            } catch (error) {
+                showNotification('Error processing file: ' + error.message, 'error');
+            } finally {
+                loadingOverlay.style.display = 'none';
+            }
+        }
+
+        function displayUploadedFiles() {
+            const section = document.getElementById('uploadedFilesSection');
+            const list = document.getElementById('uploadedFilesList');
+            const showMoreBtn = document.getElementById('showMoreUploaded');
+            
+            section.style.display = 'block';
+            list.innerHTML = '';
+
+            // Sort by upload time (newest first)
+            const sortedFiles = [...uploadedFiles].sort((a, b) => {
+                return new Date(b.upload_time || 0) - new Date(a.upload_time || 0);
+            });
+
+            // Show only last 3 files unless showAllUploaded is true
+            const filesToShow = showAllUploaded ? sortedFiles : sortedFiles.slice(0, FILES_PER_PAGE);
+            
+            // Show/hide "Show More" button
+            if (sortedFiles.length > FILES_PER_PAGE) {
+                showMoreBtn.style.display = 'block';
+                showMoreBtn.textContent = showAllUploaded ? 'Show Less' : 'Show More';
+            } else {
+                showMoreBtn.style.display = 'none';
+            }
+
+            filesToShow.forEach((file) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                const uploadTime = file.upload_time ? formatTime(file.upload_time) : 'Unknown';
+                // Create a closure-safe reference to the file data
+                const fileData = file;
+                fileItem.innerHTML = `
+                    <div class="file-info">
+                        <a href="/download/uploads/${file.uploaded_filename}" class="file-link" download>${file.filename}</a>
+                        <span class="file-meta">Column: ${file.column} | Max Chars: ${file.max_chars} | Uploaded: ${uploadTime}</span>
+                    </div>
+                    <button class="btn btn-process">Process</button>
+                `;
+                // Attach event listener properly
+                const processBtn = fileItem.querySelector('.btn-process');
+                processBtn.addEventListener('click', () => processFile(fileData));
+                list.appendChild(fileItem);
+            });
+        }
+
+        function toggleUploadedFiles() {
+            showAllUploaded = !showAllUploaded;
+            displayUploadedFiles();
+        }
+
+        function displayOutputFile(filename, processingTime) {
+            const section = document.getElementById('outputFilesSection');
+            const list = document.getElementById('outputFilesList');
+            const showMoreBtn = document.getElementById('showMoreOutput');
+            
+            section.style.display = 'block';
+            
+            // Add to output files array with timestamp
+            const outputFile = {
+                filename: filename,
+                processing_time: processingTime,
+                created_time: new Date().toISOString()
+            };
+            outputFiles.unshift(outputFile); // Add to beginning (newest first)
+            
+            // Show only last 3 files unless showAllOutput is true
+            const filesToShow = showAllOutput ? outputFiles : outputFiles.slice(0, FILES_PER_PAGE);
+            
+            // Show/hide "Show More" button
+            if (outputFiles.length > FILES_PER_PAGE) {
+                showMoreBtn.style.display = 'block';
+                showMoreBtn.textContent = showAllOutput ? 'Show Less' : 'Show More';
+            } else {
+                showMoreBtn.style.display = 'none';
+            }
+            
+            list.innerHTML = '';
+            filesToShow.forEach((file) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item output-item';
+                const createdTime = file.created_time ? formatTime(file.created_time) : 'Unknown';
+                fileItem.innerHTML = `
+                    <div class="file-info">
+                        <a href="/download/outputs/${file.filename}" class="file-link" download>${file.filename}</a>
+                        <span class="file-meta">Ready for download | Processing time: ${file.processing_time} sec | Created: ${createdTime}</span>
+                    </div>
+                `;
+                list.appendChild(fileItem);
+            });
+        }
+
+        function toggleOutputFiles() {
+            showAllOutput = !showAllOutput;
+            const list = document.getElementById('outputFilesList');
+            const showMoreBtn = document.getElementById('showMoreOutput');
+            
+            const filesToShow = showAllOutput ? outputFiles : outputFiles.slice(0, FILES_PER_PAGE);
+            
+            if (outputFiles.length > FILES_PER_PAGE) {
+                showMoreBtn.style.display = 'block';
+                showMoreBtn.textContent = showAllOutput ? 'Show Less' : 'Show More';
+            } else {
+                showMoreBtn.style.display = 'none';
+            }
+            
+            list.innerHTML = '';
+            filesToShow.forEach((file) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item output-item';
+                const createdTime = file.created_time ? formatTime(file.created_time) : 'Unknown';
+                fileItem.innerHTML = `
+                    <div class="file-info">
+                        <a href="/download/outputs/${file.filename}" class="file-link" download>${file.filename}</a>
+                        <span class="file-meta">Ready for download | Processing time: ${file.processing_time} sec | Created: ${createdTime}</span>
+                    </div>
+                `;
+                list.appendChild(fileItem);
+            });
+        }
+
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            notification.classList.remove('fade-out');
+
+            // 5 seconds for all notifications
+            const timeout = 5000;
+            
+            // Start fade-out animation 500ms before hiding
+            setTimeout(() => {
+                notification.classList.add('fade-out');
+            }, timeout - 500);
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+                notification.classList.remove('fade-out');
+            }, timeout);
+        }
+    </script>
+</body>
+</html>
+
