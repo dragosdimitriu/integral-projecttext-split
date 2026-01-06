@@ -1036,13 +1036,19 @@
                     // Set isOutputFile from backend response or use folder check as fallback
                     previewDataStore.isOutputFile = data.is_output_file !== undefined ? data.is_output_file : (folder === 'outputs');
                     
+                    console.log('=== AFTER DATA LOADED ===', {
+                        folder: folder,
+                        isOutputFile: previewDataStore.isOutputFile,
+                        backendIsOutputFile: data.is_output_file,
+                        totalRows: data.total_rows,
+                        totalPages: data.total_pages
+                    });
+                    
                     // For output files, always 1 page (only first 50 rows shown)
                     // For input files, calculate totalPages from total_rows if not provided
                     if (previewDataStore.isOutputFile) {
                         previewDataStore.totalPages = 1;
-                        // Hide pagination immediately and don't render it for output files
-                        pagination.style.display = 'none';
-                        pagination.innerHTML = ''; // Clear any existing pagination HTML
+                        console.log('OUTPUT FILE DETECTED - Setting totalPages to 1');
                     } else if (data.total_pages && data.total_pages > 0) {
                         previewDataStore.totalPages = data.total_pages;
                     } else {
@@ -1050,28 +1056,26 @@
                         previewDataStore.totalPages = Math.ceil(data.total_rows / (data.rows_per_page || 50));
                     }
                     
-                    // Debug logging
-                    console.log('Preview data loaded:', {
-                        folder: folder,
-                        isOutputFile: previewDataStore.isOutputFile,
-                        totalRows: previewDataStore.totalRows,
-                        totalPages: previewDataStore.totalPages,
-                        currentPage: previewDataStore.currentPage,
-                        rowsPerPage: previewDataStore.rowsPerPage,
-                        backendTotalPages: data.total_pages,
-                        backendRowsPerPage: data.rows_per_page,
-                        backendIsOutputFile: data.is_output_file
-                    });
-                    
                     renderPreviewTable(data.data, data.start_row);
                     
-                    // Only render pagination for input files
-                    if (!previewDataStore.isOutputFile) {
-                        renderPagination();
-                    } else {
-                        // Double-check: hide pagination for output files
+                    // CRITICAL: Only render pagination for input files
+                    console.log('About to check pagination:', {
+                        isOutputFile: previewDataStore.isOutputFile,
+                        folder: folder,
+                        willRenderPagination: !previewDataStore.isOutputFile
+                    });
+                    
+                    if (previewDataStore.isOutputFile) {
+                        console.log('FORCING PAGINATION HIDE FOR OUTPUT FILE');
                         pagination.style.display = 'none';
+                        pagination.style.visibility = 'hidden';
                         pagination.innerHTML = '';
+                        pagination.setAttribute('data-output-file', 'true');
+                    } else {
+                        console.log('RENDERING PAGINATION FOR INPUT FILE');
+                        pagination.removeAttribute('data-output-file');
+                        pagination.style.visibility = 'visible';
+                        renderPagination();
                     }
                     
                     updatePreviewInfo(data);
