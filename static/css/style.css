@@ -440,6 +440,28 @@ footer a:hover {
     font-weight: 500;
     color: var(--text-secondary);
     white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.help-icon {
+    cursor: help;
+    font-size: 16px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.help-icon:hover {
+    opacity: 1;
+}
+
+.param-hint {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-top: 4px;
+    display: block;
 }
 
 .param-input {

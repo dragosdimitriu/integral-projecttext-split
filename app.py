@@ -180,8 +180,9 @@ def add_processing_record(success, processing_time, user_email=None):
 
 ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
 MAX_COLUMN_LENGTH = 3  # Maximum column name length (e.g., "ZZZ")
-MAX_CHARS_LIMIT = 10000  # Maximum characters per cell limit
-MIN_CHARS_LIMIT = 1  # Minimum characters per cell limit
+MAX_CHARS_LIMIT = 23  # Maximum characters per cell limit (recommended: 18-20)
+MIN_CHARS_LIMIT = 18  # Minimum characters per cell limit
+SUGGESTED_MAX_CHARS = 20  # Suggested optimal value
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
@@ -198,11 +199,11 @@ def validate_column_name(column):
     return True, None
 
 def validate_max_chars(max_chars):
-    """Validate max_chars is within reasonable bounds"""
+    """Validate max_chars is within reasonable bounds (18-23, recommended 18-20)"""
     if max_chars < MIN_CHARS_LIMIT:
-        return False, f"Max characters must be at least {MIN_CHARS_LIMIT}"
+        return False, f"Max characters must be at least {MIN_CHARS_LIMIT} (recommended: 18-20)"
     if max_chars > MAX_CHARS_LIMIT:
-        return False, f"Max characters cannot exceed {MAX_CHARS_LIMIT}"
+        return False, f"Max characters cannot exceed {MAX_CHARS_LIMIT} (recommended: 18-20)"
     return True, None
 
 def validate_excel_file(filepath):
@@ -793,11 +794,8 @@ def validate_file_advanced():
         
         # File is valid - suggest optimal parameters
         single_column = columns_with_data[0]
-        suggested_max_chars = int(single_column['max_length'] * 0.8)  # 80% of max length
-        if suggested_max_chars < 100:
-            suggested_max_chars = 100
-        elif suggested_max_chars > 10000:
-            suggested_max_chars = 10000
+        # Always suggest 20 characters (optimal range is 18-20, max 23)
+        suggested_max_chars = 20
         
         return jsonify({
             'success': True,
@@ -807,7 +805,7 @@ def validate_file_advanced():
             'suggested_parameters': {
                 'column': single_column['letter'],
                 'max_chars': suggested_max_chars,
-                'reason': f"Based on analysis: max cell length is {single_column['max_length']} characters"
+                'reason': 'Optimal value: 20 characters (recommended range: 18-20, maximum: 23)'
             },
             'file_info': {
                 'total_rows': sheet.max_row,
