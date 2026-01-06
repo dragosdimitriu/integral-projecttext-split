@@ -1150,6 +1150,11 @@
 
         function closePreview() {
             document.getElementById('previewModal').style.display = 'none';
+            // Disconnect observer if it exists
+            if (window.paginationObserver) {
+                window.paginationObserver.disconnect();
+                window.paginationObserver = null;
+            }
         }
 
         // Close modal when clicking outside
