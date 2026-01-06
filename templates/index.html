@@ -1100,9 +1100,17 @@
                     
                     updatePreviewInfo(data);
                     
-                    // Add MutationObserver to prevent pagination from being shown for output files
+                    // Force hide pagination for output files using multiple methods
                     if (previewDataStore.isOutputFile) {
-                        // Disconnect any existing observer
+                        console.log('Setting up pagination blocker for output file');
+                        
+                        // Method 1: Immediate hide
+                        pagination.style.display = 'none';
+                        pagination.style.visibility = 'hidden';
+                        pagination.innerHTML = '';
+                        pagination.setAttribute('data-output-file', 'true');
+                        
+                        // Method 2: MutationObserver
                         if (window.paginationObserver) {
                             window.paginationObserver.disconnect();
                         }
@@ -1127,9 +1135,32 @@
                             attributeFilter: ['style', 'class']
                         });
                         
-                        // Store observer to disconnect later
                         window.paginationObserver = paginationObserver;
-                        console.log('MutationObserver installed for output file');
+                        
+                        // Method 3: Periodic check to force hide (every 100ms)
+                        if (window.paginationHideInterval) {
+                            clearInterval(window.paginationHideInterval);
+                        }
+                        
+                        window.paginationHideInterval = setInterval(function() {
+                            const pagEl = document.getElementById('previewPagination');
+                            if (pagEl && (pagEl.style.display === 'flex' || pagEl.style.display === 'block' || 
+                                window.getComputedStyle(pagEl).display === 'flex' || 
+                                window.getComputedStyle(pagEl).display === 'block')) {
+                                console.log('Periodic check: Forcing pagination hide');
+                                pagEl.style.display = 'none';
+                                pagEl.style.visibility = 'hidden';
+                                pagEl.innerHTML = '';
+                            }
+                        }, 100);
+                        
+                        console.log('Pagination blocker installed (MutationObserver + setInterval)');
+                    } else {
+                        // Clear interval for input files
+                        if (window.paginationHideInterval) {
+                            clearInterval(window.paginationHideInterval);
+                            window.paginationHideInterval = null;
+                        }
                     }
                     
                     // For input files, load all data for search in background (in chunks to avoid memory issues)
@@ -1186,6 +1217,11 @@
             if (window.paginationObserver) {
                 window.paginationObserver.disconnect();
                 window.paginationObserver = null;
+            }
+            // Clear interval if it exists
+            if (window.paginationHideInterval) {
+                clearInterval(window.paginationHideInterval);
+                window.paginationHideInterval = null;
             }
         }
 
