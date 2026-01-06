@@ -139,11 +139,11 @@ server {
 NGINXEOF
 
 # Enable Nginx site
-ln -sf /etc/nginx/sites-available/integral-projecttext /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
+sudo ln -sf /etc/nginx/sites-available/integral-projecttext /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
 
 # Set permissions
-chown -R lastchance:lastchance /home/lastchance/ProjectTextApp
+sudo chown -R lastchance:lastchance /home/lastchance/ProjectTextApp
 
 # Reload systemd and start services
 echo "Starting services..."

@@ -44,7 +44,7 @@ Visit: https://pt.schrack.lastchance.ro
 - **IP**: 185.125.109.150
 - **Domain**: pt.schrack.lastchance.ro
 - **SSH Port**: 2324
-- **User**: lastchance
+- **User**: lastchance (has root/sudo privileges)
 - **App Path**: /home/lastchance/ProjectTextApp
 
 ## 🔧 Common Commands

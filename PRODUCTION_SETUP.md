@@ -3,6 +3,8 @@
 ## Server Information
 - **IP Address**: 185.125.109.150
 - **Domain**: pt.schrack.lastchance.ro
+- **SSH Port**: 2324
+- **User**: lastchance (has root/sudo privileges)
 - **Google OAuth**: Already registered
 
 ## Step 1: SSH Key Setup (Local)
