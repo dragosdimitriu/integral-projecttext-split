@@ -54,7 +54,7 @@ Integral ProjectText FileProcessor is a Flask-based web application that allows 
 - **Processing Details** - Includes input/output filenames and processing time
 
 ### 🌐 User Interface
-- **Fully Localized** - Complete Romanian interface (except main title)
+- **Fully Localized** - Complete Romanian interface 
 - **Modern, Responsive Design** - Works on desktop and mobile devices
 - **Interactive Help System** - FAQ section with expandable questions
 - **Step-by-Step Tutorial** - Interactive guide for new users
@@ -268,11 +268,8 @@ waitress-serve --host=0.0.0.0 --port=5000 wsgi:app
 
 ## 🌍 Localization
 
-The application interface is fully localized in Romanian, except for:
-- Main title: "Integral ProjectText FileProcessor"
-- Subtitle: "Procesează numele entitatilor din Project Text pentru incadrare optima"
+The application interface is fully localized in Romanian
 
-All other UI elements, help text, FAQ, and email notifications are in Romanian.
 
 ## 📊 Statistics Tracking
 
