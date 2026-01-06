@@ -15,11 +15,11 @@ server {
 
     client_max_body_size 16M;
 
-    location /static/ {
-        alias /home/lastchance/ProjectTextApp/static/;
+    # Flask serves static files from /static (no trailing slash)
+    location /static {
+        alias /home/lastchance/ProjectTextApp/static;
         expires 30d;
-        add_header Cache-Control "public, immutable";
-        access_log off;
+        add_header Cache-Control "public";
     }
 
     location / {
