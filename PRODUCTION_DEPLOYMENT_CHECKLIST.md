@@ -135,9 +135,15 @@ sudo netstat -tlnp | grep 5000
 
 1. Open browser: https://pt.schrack.lastchance.ro
 2. Test login with Google OAuth
-3. Upload a test file
-4. Process the file
-5. Verify email notification is received
+3. Upload a test file (drag-and-drop and click to browse)
+4. Verify statistics dashboard displays correctly
+5. Test preview functionality:
+   - Input files: Should show pagination (50 rows per page) and search
+   - Output files: Should show only first 50 rows, no pagination
+6. Process the file
+7. Verify email notification is received (check HTML formatting in Gmail)
+8. Test search functionality in preview (input files only)
+9. Test pagination navigation (input files only)
 
 ## Rollback Procedure
 
@@ -165,7 +171,11 @@ sudo systemctl start integral-projecttext
 - [ ] Email notifications are sent (check HTML formatting in Gmail)
 - [ ] Output files can be downloaded
 - [ ] Statistics dashboard displays correctly
-- [ ] Preview modal shows all rows with scrolling
+- [ ] Preview functionality:
+  - [ ] Input files: Pagination works (50 rows per page)
+  - [ ] Input files: Search functionality works
+  - [ ] Output files: Shows only first 50 rows
+  - [ ] Output files: No pagination displayed
 - [ ] Romanian interface displays correctly
 - [ ] Max chars defaults to 20
 - [ ] No errors in logs
